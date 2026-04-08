@@ -160,15 +160,15 @@ function getSmartFallback(query, store) {
   ];
 }
 
+// 1. AMAZON (Powered by ScraperAPI)
 async function scrapeAmazon(query) {
   try {
-    const apiKey = process.env.SCRAPER_API_KEY; // Using ScrapingBee key here
+    const apiKey = process.env.SCRAPER_API_KEY;
     if (!apiKey) return getSmartFallback(query, "Amazon");
 
     const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
-    
-    // NEW SCRAPINGBEE URL
-    const proxyUrl = `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium_proxy=true&country_code=in`;
+    // URL updated to ScraperAPI
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
     const { data } = await axios.get(proxyUrl, { timeout: 15000 });
     const $ = cheerio.load(data);
@@ -192,15 +192,15 @@ async function scrapeAmazon(query) {
   }
 }
 
+// 2. FLIPKART (Powered by ScraperAPI)
 async function scrapeFlipkart(query) {
   try {
     const apiKey = process.env.SCRAPER_API_KEY;
     if (!apiKey) return getSmartFallback(query, "Flipkart");
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
-    
-    // NEW SCRAPINGBEE URL
-    const proxyUrl = `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium_proxy=true&country_code=in`;
+    // URL updated to ScraperAPI
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
     const { data } = await axios.get(proxyUrl, { timeout: 9000 });
     const $ = cheerio.load(data);
@@ -232,20 +232,20 @@ async function scrapeFlipkart(query) {
   }
 }
 
+// 3. GOOGLE SHOPPING / OTHER STORES (Powered by ScraperAPI)
 async function scrapeGoogle(query) {
   try {
+    // We are reusing the exact same key you use for Amazon and Flipkart!
     const apiKey = process.env.SCRAPER_API_KEY;
     if (!apiKey) return getSmartFallback(query, "Web");
 
-    // NEW SCRAPINGBEE GOOGLE STORE API
-    const proxyUrl = `https://app.scrapingbee.com/api/v1/store/google?api_key=${apiKey}&search=${encodeURIComponent(query)}&country_code=in`;
+    // Notice the &engine=google_shopping flag. This tells ScraperAPI to return pure JSON!
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&engine=google_shopping&q=${encodeURIComponent(query)}&gl=in`;
 
     const { data } = await axios.get(proxyUrl, { timeout: 15000 });
     
     if (data.shopping_results) {
       return data.shopping_results.slice(0, 4).map(item => {
-        
-        // ScrapingBee outputs 'price' slightly differently, so we clean it here
         const rawPrice = item.price || item.extracted_price || "";
         const cleanPrice = rawPrice.toString().replace(/[^\d]/g, "") || String(Math.floor(Math.random() * 10000) + 5000);
 
