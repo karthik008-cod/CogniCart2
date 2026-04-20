@@ -1,0 +1,26 @@
+[
+  {
+    "username": "aakasltf06@gmail.com",
+    "cart": [
+      {
+        "title": "Lenovo Yoga Slim 7 (Smartchoice) Aura Edition, Intel Core Ul...",
+        "price": "109990",
+        "image": "https://m.media-amazon.com/images/I/815+LXzloGL._AC_UY218_.jpg",
+        "rating": "4.5"
+      },
+      {
+        "title": "Mac book pro m5 chip - Premium Edition (Flipkart Choice)",
+        "price": "16328",
+        "image": "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
+        "rating": "4.7"
+      }
+    ],
+    "orders": [],
+    "history": [
+      {
+        "searchQuery": "mac book pro m5 chip",
+        "time": "9/4/2026, 11:09:13 am"
+      }
+    ]
+  }
+]

@@ -1,37 +1,50 @@
 const express = require("express");
 const cors = require("cors");
+const dns = require("dns");
 const { MongoClient } = require("mongodb");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const router = express.Router();
+router.use(cors());
+router.use(express.json());
 
+// In-memory OTP store for development (no DB required for auth)
+let otpStore = {};
 
 // ─── 1. CLOUD SERVICES SETUP ────────────────────────────────────────────────
 
 const mongoUri = process.env.MONGODB_URI;
+if (!mongoUri) {
+  throw new Error("MONGODB_URI is required in environment variables.");
+}
+
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
+
 const client = new MongoClient(mongoUri, {
-  maxPoolSize: 10,          // FIX: explicit pool keeps connections warm
-  serverSelectionTimeoutMS: 5000,
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000,
 });
 let db;
 
 async function connectDB() {
-  if (!db) {
+  if (db) return db;
+  try {
     await client.connect();
     db = client.db("cognitive_cart");
+    console.log("MongoDB connected");
+    return db;
+  } catch (err) {
+    console.error("MongoDB connection error:", err?.message || err);
+    throw err;
   }
-  return db;
 }
-
 
 const emailClient = SibApiV3Sdk.ApiClient.instance;
 emailClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
 const emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
-
 
 // ─── 2. IN-MEMORY CACHE ──────────────────────────────────────────────────────
 //
@@ -39,10 +52,10 @@ const emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 // within 5 minutes should return instantly from memory instead of re-scraping.
 // AI recommendation for the same set of products should also not re-call Gemini.
 
-const SEARCH_TTL  = 5 * 60 * 1000;  // 5 minutes
-const AI_TTL      = 10 * 60 * 1000; // 10 minutes
-const searchCache = new Map();       // key: query → { data, expiresAt }
-const aiCache     = new Map();       // key: productHash → { explanation, expiresAt }
+const SEARCH_TTL = 5 * 60 * 1000; // 5 minutes
+const AI_TTL = 10 * 60 * 1000; // 10 minutes
+const searchCache = new Map(); // key: query → { data, expiresAt }
+const aiCache = new Map(); // key: productHash → { explanation, expiresAt }
 
 // Pending search requests: prevents duplicate concurrent scrapes for same query.
 // WHY: Two tabs or two rapid clicks on the same query both hit /api/search.
@@ -53,7 +66,10 @@ const inflightSearches = new Map(); // key: query → Promise
 function getCached(cache, key) {
   const entry = cache.get(key);
   if (!entry) return null;
-  if (Date.now() > entry.expiresAt) { cache.delete(key); return null; }
+  if (Date.now() > entry.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
   return entry.data;
 }
 
@@ -69,16 +85,15 @@ function setCache(cache, key, data, ttl) {
 // Stable hash for AI cache key: sorts products so order doesn't matter
 function hashProducts(products) {
   return products
-    .map(p => `${p.title}|${p.price}`)
+    .map((p) => `${p.title}|${p.price}`)
     .sort()
     .join(",")
     .slice(0, 200); // cap length
 }
 
-
 // ─── 3. AUTHENTICATION ───────────────────────────────────────────────────────
 
-app.post("/api/send-otp", async (req, res) => {
+router.post("/send-otp", async (req, res) => {
   const { username } = req.body;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username))
     return res.json({ message: "Enter valid email" });
@@ -86,77 +101,98 @@ app.post("/api/send-otp", async (req, res) => {
   const otp = Math.floor(100000 + Math.random() * 900000);
   const expiry = Date.now() + 5 * 60 * 1000;
 
+  otpStore[username] = { otp, expiry };
+
   try {
-    const database = await connectDB();
-    await database.collection("otps").updateOne(
-      { username },
-      { $set: { otp, expiry } },
-      { upsert: true }
-    );
     await emailApi.sendTransacEmail({
       sender: { email: "aakasltf06@gmail.com", name: "Cognitive Cart" },
-      to: [{ email: username }],
-      subject: "Your Cognitive Cart Verification Code",
+      to: [{ email: username, name: username.split("@")[0] }],
+      subject: "Your Cognitive Cart OTP Code",
       htmlContent: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-          <h2 style="color: #0f172a; margin-bottom: 10px; font-size: 24px;">🛒 Cognitive Cart</h2>
-          <p style="color: #475569; font-size: 16px; margin-bottom: 25px;">Welcome! Here is your secure verification code:</p>
-          
-          <div style="margin: 0 auto; padding: 15px 30px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff; font-size: 36px; font-weight: 800; letter-spacing: 8px; border-radius: 10px; width: fit-content; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);">
-            ${otp}
+        <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 20px;">
+          <div style="max-width: 420px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.08); text-align: center;">
+            <h2 style="color: #1f2937; margin-bottom: 12px;">Cognitive Cart</h2>
+            <p style="color: #475569; margin-bottom: 20px;">Use the following code to verify your email address:</p>
+            <div style="font-size: 36px; font-weight: 700; letter-spacing: 6px; color: #4338ca; margin: 20px 0;">${otp}</div>
+            <p style="color: #6b7280; font-size: 14px;">This code expires in 5 minutes.</p>
           </div>
-          
-          <p style="color: #ef4444; font-size: 14px; font-weight: 600; margin-top: 25px;">⏳ This code expires in 5 minutes.</p>
-          
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0 20px 0;">
-          <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">If you did not request this code, you can safely ignore this email. Someone might have typed their email address incorrectly.</p>
         </div>
-      `
+      `,
     });
-    res.json({ message: "OTP sent successfully" });
+
+    res.json({ message: "OTP sent successfully to your email." });
   } catch (err) {
-    console.error("OTP send error:", err);
-    res.status(500).json({ message: "Failed to send OTP" });
+    console.error(
+      "OTP send error:",
+      err?.response?.body || err?.response || err.message || err,
+    );
+    res
+      .status(500)
+      .json({ message: "Failed to send OTP. Check server logs for details." });
   }
 });
 
-app.post("/api/verify-otp", async (req, res) => {
+router.post("/verify-otp", async (req, res) => {
   const { username, otp } = req.body;
+
+  const record = otpStore[username];
+  if (!record) return res.json({ success: false, message: "No OTP found" });
+  if (Date.now() > record.expiry)
+    return res.json({ success: false, message: "OTP expired" });
+  if (parseInt(otp) !== record.otp)
+    return res.json({ success: false, message: "Invalid OTP" });
+
+  delete otpStore[username];
+
   try {
     const database = await connectDB();
-    const record = await database.collection("otps").findOne({ username });
-
-    if (!record) return res.json({ success: false, message: "No OTP found" });
-    if (Date.now() > record.expiry) return res.json({ success: false, message: "OTP expired" });
-    if (parseInt(otp) !== record.otp) return res.json({ success: false, message: "Invalid OTP" });
-
     const usersCollection = database.collection("users");
-    // FIX: projection limits what Mongo sends over the wire – we only need _id
-    const user = await usersCollection.findOne({ username }, { projection: { _id: 1 } });
+    const user = await usersCollection.findOne(
+      { username },
+      { projection: { _id: 1 } },
+    );
     if (!user) {
-      await usersCollection.insertOne({ username, cart: [], orders: [], history: [] });
+      await usersCollection.insertOne({
+        username,
+        cart: [],
+        orders: [],
+        history: [],
+      });
     }
-
-    await database.collection("otps").deleteOne({ username });
     res.json({ success: true, message: "Login successful" });
   } catch (err) {
-    console.error("OTP verify error:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Verify OTP DB error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
 
 // ─── 4. SCRAPERS ─────────────────────────────────────────────────────────────
 
 // Upgraded to a sleek tech image instead of the blank white circle
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
+const FALLBACK_IMG =
+  "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
 
 function getSmartFallback(query, store) {
   const q = query.charAt(0).toUpperCase() + query.slice(1);
   return [
-    { title: `${q} - Premium Edition (${store} Choice)`, price: String(Math.floor(Math.random() * 20000) + 15000), rating: "4.7", image: FALLBACK_IMG },
-    { title: `${q} Standard Variant (128GB)`, price: String(Math.floor(Math.random() * 10000) + 10000), rating: "4.3", image: FALLBACK_IMG },
-    { title: `${q} Lite - Budget Friendly`, price: String(Math.floor(Math.random() * 5000) + 5000), rating: "4.0", image: FALLBACK_IMG }
+    {
+      title: `${q} - Premium Edition (${store} Choice)`,
+      price: String(Math.floor(Math.random() * 20000) + 15000),
+      rating: "4.7",
+      image: FALLBACK_IMG,
+    },
+    {
+      title: `${q} Standard Variant (128GB)`,
+      price: String(Math.floor(Math.random() * 10000) + 10000),
+      rating: "4.3",
+      image: FALLBACK_IMG,
+    },
+    {
+      title: `${q} Lite - Budget Friendly`,
+      price: String(Math.floor(Math.random() * 5000) + 5000),
+      rating: "4.0",
+      image: FALLBACK_IMG,
+    },
   ];
 }
 
@@ -174,17 +210,25 @@ async function scrapeAmazon(query) {
     const $ = cheerio.load(data);
     const results = [];
 
-    $("div[data-component-type='s-search-result']").slice(0, 4).each((_, el) => {
-      const title = $(el).find("h2 span").text().trim();
-      const price = $(el).find(".a-price-whole").first().text().replace(/,/g, "");
-      const image = $(el).find("img.s-image").attr("src");
-      if (title && price) {
-        results.push({
-          title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
-          price, rating: "4.5", image: image || FALLBACK_IMG,
-        });
-      }
-    });
+    $("div[data-component-type='s-search-result']")
+      .slice(0, 4)
+      .each((_, el) => {
+        const title = $(el).find("h2 span").text().trim();
+        const price = $(el)
+          .find(".a-price-whole")
+          .first()
+          .text()
+          .replace(/,/g, "");
+        const image = $(el).find("img.s-image").attr("src");
+        if (title && price) {
+          results.push({
+            title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
+            price,
+            rating: "4.5",
+            image: image || FALLBACK_IMG,
+          });
+        }
+      });
     return results.length ? results : getSmartFallback(query, "Amazon");
   } catch (e) {
     console.error("Amazon scrape failed:", e.message);
@@ -206,25 +250,34 @@ async function scrapeFlipkart(query) {
     const $ = cheerio.load(data);
     const results = [];
 
-    $("div[data-id]").slice(0, 4).each((_, el) => {
-      const title = $(el).find("img").attr("alt");
-      const price = $(el).text().match(/₹([0-9,]+)/)?.[1]?.replace(/,/g, "");
-      
-      let image = FALLBACK_IMG;
-      $(el).find("img").each((i, imgEl) => {
-        const src = $(imgEl).attr("src");
-        if (src && src.includes("rukminim")) {
-          image = src;
+    $("div[data-id]")
+      .slice(0, 4)
+      .each((_, el) => {
+        const title = $(el).find("img").attr("alt");
+        const price = $(el)
+          .text()
+          .match(/₹([0-9,]+)/)?.[1]
+          ?.replace(/,/g, "");
+
+        let image = FALLBACK_IMG;
+        $(el)
+          .find("img")
+          .each((i, imgEl) => {
+            const src = $(imgEl).attr("src");
+            if (src && src.includes("rukminim")) {
+              image = src;
+            }
+          });
+
+        if (title && price) {
+          results.push({
+            title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
+            price,
+            rating: "4.3",
+            image: image,
+          });
         }
       });
-
-      if (title && price) {
-        results.push({
-          title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
-          price, rating: "4.3", image: image,
-        });
-      }
-    });
     return results.length ? results : getSmartFallback(query, "Flipkart");
   } catch (e) {
     console.error("Flipkart scrape failed:", e.message);
@@ -232,41 +285,132 @@ async function scrapeFlipkart(query) {
   }
 }
 
-// 3. GOOGLE SHOPPING / OTHER STORES (Powered by ScraperAPI)
-// 3. GOOGLE SHOPPING / OTHER STORES (Powered by ScraperAPI)
+// 3. GOOGLE SHOPPING / OTHER STORES
+// Strategy: SerpAPI (best) → ScraperAPI structured endpoint → fallback
 async function scrapeGoogle(query) {
-  try {
-    const apiKey = process.env.SCRAPER_API_KEY;
-    if (!apiKey) return getSmartFallback(query, "Web");
 
-    // ADDED &autoparse=true HERE
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&engine=google_shopping&autoparse=true&q=${encodeURIComponent(query)}&gl=in`;
-
-    const { data } = await axios.get(proxyUrl, { timeout: 15000 });
-    
-    if (data.shopping_results) {
-      return data.shopping_results.slice(0, 4).map(item => {
-        const rawPrice = item.price || item.extracted_price || "";
-        const cleanPrice = rawPrice.toString().replace(/[^\d]/g, "") || String(Math.floor(Math.random() * 10000) + 5000);
-
-        return {
-          title: item.title.substring(0, 60) + (item.title.length > 60 ? "..." : ""),
-          price: cleanPrice,
-          rating: item.rating ? String(item.rating) : "4.5",
-          image: item.thumbnail || FALLBACK_IMG,
-          store: item.source || "Web Store"
-        };
+  // ── STRATEGY 1: SerpAPI (most reliable, 100 free/month) ──────────────────
+  // Sign up free at https://serpapi.com and paste the key into your .env as SERPAPI_KEY
+  const serpKey = process.env.SERPAPI_KEY;
+  if (serpKey) {
+    try {
+      const { data } = await axios.get("https://serpapi.com/search.json", {
+        params: {
+          engine:  "google_shopping",
+          q:       query,
+          gl:      "in",          // India
+          hl:      "en",
+          num:     "8",
+          api_key: serpKey,
+        },
+        timeout: 12000,
       });
+
+      if (data.shopping_results?.length) {
+        return data.shopping_results.slice(0, 4).map((item) => {
+          // SerpAPI returns prices like "₹75,900" — strip to digits only
+          const rawPrice = item.price || item.extracted_price || "";
+          const price = rawPrice.toString().replace(/[^\d]/g, "") ||
+                        String(Math.floor(Math.random() * 20000) + 8000);
+          const title = (item.title || "").trim();
+          return {
+            title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
+            price,
+            rating: item.rating ? String(item.rating) : "4.5",
+            image:  item.thumbnail || FALLBACK_IMG,
+            store:  item.source   || "Google Shopping",
+          };
+        });
+      }
+    } catch (e) {
+      console.error("SerpAPI shopping failed:", e.message);
     }
-    return getSmartFallback(query, "Web");
-  } catch (e) {
-    console.error("Google scrape failed:", e.message);
-    return getSmartFallback(query, "Web");
   }
+
+  // ── STRATEGY 2: ScraperAPI structured data endpoint ──────────────────────
+  // This dedicated endpoint returns clean JSON without HTML parsing overhead.
+  const scraperKey = process.env.SCRAPER_API_KEY;
+  if (scraperKey) {
+    try {
+      const { data } = await axios.get(
+        "https://api.scraperapi.com/structured/google/shopping",
+        {
+          params: {
+            api_key:      scraperKey,
+            query:        query,
+            country_code: "in",
+          },
+          timeout: 18000,
+        }
+      );
+
+      // ScraperAPI structured endpoint returns { shopping_results: [...] }
+      const items = data.shopping_results || data.results || [];
+      if (items.length) {
+        return items.slice(0, 4).map((item) => {
+          const rawPrice = item.price || item.extracted_price || "";
+          const price = rawPrice.toString().replace(/[^\d]/g, "") ||
+                        String(Math.floor(Math.random() * 20000) + 8000);
+          const title = (item.title || item.name || "").trim();
+          return {
+            title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
+            price,
+            rating: item.rating ? String(item.rating) : "4.5",
+            image:  item.thumbnail || item.image || FALLBACK_IMG,
+            store:  item.source || item.merchant || "Web Store",
+          };
+        });
+      }
+    } catch (e) {
+      console.error("ScraperAPI structured shopping failed:", e.message);
+    }
+  }
+
+  // ── STRATEGY 3: ScraperAPI HTML proxy + cheerio parse ────────────────────
+  if (scraperKey) {
+    try {
+      const targetUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=shop&hl=en&gl=in`;
+      const proxyUrl  = `http://api.scraperapi.com?api_key=${scraperKey}&url=${encodeURIComponent(targetUrl)}&render=true&country_code=in`;
+
+      const { data } = await axios.get(proxyUrl, { timeout: 20000 });
+      const $ = cheerio.load(data);
+      const results = [];
+
+      $(".sh-dgr__gr-auto, .sh-dlr__list-result, .KZmu8e, .u30d4, [data-docid]").each((_, el) => {
+        if (results.length >= 4) return false;
+        const title =
+          $(el).find(".Xjkr3b, .tAxDx, h3, .rgHvZc").first().text().trim() || "";
+        const priceRaw =
+          $(el).find(".a8Pemb, .kHxwFf, .T14wmb, .XrAfOe").first().text().trim() || "";
+        const price = priceRaw.replace(/[^\d]/g, "");
+        const image =
+          $(el).find("img").attr("src") || $(el).find("img").attr("data-src") || FALLBACK_IMG;
+        const store =
+          $(el).find(".aULzUe, .E5ocAb, .IuHnof, .NbV1uc").first().text().trim() || "Google Shopping";
+        if (title && price) {
+          results.push({
+            title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
+            price,
+            rating: "4.5",
+            image: image.startsWith("http") ? image : FALLBACK_IMG,
+            store,
+          });
+        }
+      });
+
+      if (results.length >= 1) return results;
+    } catch (e) {
+      console.error("ScraperAPI HTML shopping failed:", e.message);
+    }
+  }
+
+  // ── All strategies failed — return smart fallback ────────────────────────
+  console.warn("All Google Shopping strategies failed. Using fallback for:", query);
+  return getSmartFallback(query, "Web");
 }
 // ─── 5. SEARCH ENDPOINT ──────────────────────────────────────────────────────
 
-app.get("/api/search", async (req, res) => {
+router.get("/search", async (req, res) => {
   const query = (req.query.q || "").trim().toLowerCase();
   if (!query) return res.status(400).json({ error: "Query required" });
 
@@ -288,14 +432,18 @@ app.get("/api/search", async (req, res) => {
 
   // 3. Run both scrapers in parallel (already was parallel – keep this)
   // 3. Run all THREE scrapers in parallel
-  const searchPromise = Promise.all([scrapeAmazon(query), scrapeFlipkart(query), scrapeGoogle(query)])
+  const searchPromise = Promise.all([
+    scrapeAmazon(query),
+    scrapeFlipkart(query),
+    scrapeGoogle(query),
+  ])
     .then(([amazon, flipkart, google]) => {
       const result = {
         product: query,
         lastUpdated: new Date().toLocaleString(),
         amazon,
         flipkart,
-        google // Send the new data to the frontend
+        google, // Send the new data to the frontend
       };
       setCache(searchCache, query, result, SEARCH_TTL);
       return result;
@@ -313,15 +461,18 @@ app.get("/api/search", async (req, res) => {
   }
 });
 
-
 // ─── 6. CART & ORDERS ────────────────────────────────────────────────────────
 
-app.post("/api/add-to-cart", async (req, res) => {
+router.post("/add-to-cart", async (req, res) => {
   const { username, product } = req.body;
-  if (!username || !product) return res.status(400).json({ message: "Missing fields" });
+  if (!username || !product)
+    return res.status(400).json({ message: "Missing fields" });
+
   try {
     const db = await connectDB();
-    await db.collection("users").updateOne({ username }, { $push: { cart: product } });
+    await db
+      .collection("users")
+      .updateOne({ username }, { $push: { cart: product } }, { upsert: true });
     res.json({ message: "Added to cart" });
   } catch (err) {
     console.error("Add to cart error:", err);
@@ -329,29 +480,26 @@ app.post("/api/add-to-cart", async (req, res) => {
   }
 });
 
-app.get("/api/cart/:username", async (req, res) => {
+router.get("/cart/:username", async (req, res) => {
   try {
     const db = await connectDB();
-    // FIX: projection — only fetch the cart field, not the entire user document
-    const user = await db.collection("users").findOne(
-      { username: req.params.username },
-      { projection: { cart: 1 } }
-    );
+    const user = await db
+      .collection("users")
+      .findOne({ username: req.params.username }, { projection: { cart: 1 } });
     res.json(user?.cart || []);
   } catch (err) {
-    res.status(500).json([]);
+    console.error("Get cart error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-app.post("/api/place-order", async (req, res) => {
+router.post("/place-order", async (req, res) => {
   const { username, paymentMethod } = req.body;
   try {
     const db = await connectDB();
-    // FIX: projection — only fetch cart, not full user doc
-    const user = await db.collection("users").findOne(
-      { username },
-      { projection: { cart: 1 } }
-    );
+    const user = await db
+      .collection("users")
+      .findOne({ username }, { projection: { cart: 1 } });
     if (!user || !user.cart?.length) return res.json({ message: "Cart empty" });
 
     const newOrder = {
@@ -359,10 +507,12 @@ app.post("/api/place-order", async (req, res) => {
       paymentMethod,
       orderDate: new Date().toLocaleString(),
     };
-    await db.collection("users").updateOne(
-      { username },
-      { $push: { orders: newOrder }, $set: { cart: [] } }
-    );
+    await db
+      .collection("users")
+      .updateOne(
+        { username },
+        { $push: { orders: newOrder }, $set: { cart: [] } },
+      );
     res.json({ message: "Order placed successfully" });
   } catch (err) {
     console.error("Place order error:", err);
@@ -370,37 +520,42 @@ app.post("/api/place-order", async (req, res) => {
   }
 });
 
-app.get("/api/orders/:username", async (req, res) => {
+router.get("/orders/:username", async (req, res) => {
   try {
     const db = await connectDB();
-    // FIX: projection
-    const user = await db.collection("users").findOne(
-      { username: req.params.username },
-      { projection: { orders: 1 } }
-    );
+    const user = await db
+      .collection("users")
+      .findOne(
+        { username: req.params.username },
+        { projection: { orders: 1 } },
+      );
     res.json(user?.orders || []);
   } catch (err) {
-    res.status(500).json([]);
+    console.error("Get orders error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
 // FIX: This endpoint was called from the frontend but never defined in the backend,
 // causing a silent 404. Now it actually works.
-app.get("/api/history/:username", async (req, res) => {
+router.get("/history/:username", async (req, res) => {
   try {
     const db = await connectDB();
-    const user = await db.collection("users").findOne(
-      { username: req.params.username },
-      { projection: { history: 1 } }
-    );
+    const user = await db
+      .collection("users")
+      .findOne(
+        { username: req.params.username },
+        { projection: { history: 1 } },
+      );
     res.json(user?.history || []);
   } catch (err) {
-    res.status(500).json([]);
+    console.error("Get history error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
 // Optional: endpoint to save search to history when user searches
-app.post("/api/history", async (req, res) => {
+router.post("/history", async (req, res) => {
   const { username, searchQuery } = req.body;
   if (!username || !searchQuery) return res.json({ ok: true });
   try {
@@ -411,23 +566,25 @@ app.post("/api/history", async (req, res) => {
         $push: {
           history: {
             $each: [{ searchQuery, time: new Date().toLocaleString() }],
-            $slice: -50, // keep only last 50 entries
+            $slice: -50,
           },
         },
-      }
+      },
+      { upsert: true },
     );
     res.json({ ok: true });
   } catch (err) {
+    console.error("History save error:", err);
     res.status(500).json({ ok: false });
   }
 });
 
-
 // ─── 7. AI ENDPOINTS (POWERED BY GROQ & LLAMA 3) ─────────────────────────────
 
-app.post("/api/ai-recommendation", async (req, res) => {
+router.post("/ai-recommendation", async (req, res) => {
   const { products } = req.body;
-  if (!products?.length) return res.json({ explanation: "No products to analyze." });
+  if (!products?.length)
+    return res.json({ explanation: "No products to analyze." });
 
   const cacheKey = hashProducts(products);
   const cached = getCached(aiCache, cacheKey);
@@ -440,12 +597,16 @@ app.post("/api/ai-recommendation", async (req, res) => {
       `pick the best value (balance of lowest price, highest rating, fastest delivery). ` +
       `Reply in exactly 2 short plain-text sentences. No markdown, no asterisks.`;
 
-    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }]
-    }, {
-      headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}` }
-    });
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompt }],
+      },
+      {
+        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+      },
+    );
 
     const explanation = response.data.choices[0].message.content.trim();
     setCache(aiCache, cacheKey, explanation, AI_TTL);
@@ -456,25 +617,31 @@ app.post("/api/ai-recommendation", async (req, res) => {
   }
 });
 
-app.post("/api/chatbot", async (req, res) => {
+router.post("/chatbot", async (req, res) => {
   const { message, username } = req.body; // NOW ACCEPTING USERNAME
   if (!message?.trim()) return res.json({ reply: "Say something!" });
 
   try {
     let userContext = "";
-    
+
     // If user is logged in, fetch their cart and orders from MongoDB
     if (username) {
       const db = await connectDB();
-      const user = await db.collection("users").findOne(
-        { username }, 
-        { projection: { cart: 1, orders: 1 } }
-      );
-      
+      const user = await db
+        .collection("users")
+        .findOne({ username }, { projection: { cart: 1, orders: 1 } });
+
       if (user) {
-        const cartStr = (user.cart || []).map(p => p.title).join(", ") || "Empty";
-        const ordersStr = (user.orders || []).map(o => `Items: ${o.items.map(i=>i.title).join(", ")} | Date: ${o.orderDate}`).join(" ; ") || "No orders yet";
-        
+        const cartStr =
+          (user.cart || []).map((p) => p.title).join(", ") || "Empty";
+        const ordersStr =
+          (user.orders || [])
+            .map(
+              (o) =>
+                `Items: ${o.items.map((i) => i.title).join(", ")} | Date: ${o.orderDate}`,
+            )
+            .join(" ; ") || "No orders yet";
+
         // UPGRADED CONTEXT: Tells Llama strictly when to use this data
         userContext = `\n[HIDDEN CONTEXT]: User Cart: [${cartStr}] | User Orders: [${ordersStr}].\nCRITICAL RULE: ONLY mention the cart or orders if the user explicitly asks "what is in my cart" or "show my orders". If they ask a general question, DO NOT mention the cart or orders.`;
       }
@@ -487,12 +654,16 @@ app.post("/api/chatbot", async (req, res) => {
       userContext +
       `\nUser: "${message.trim()}"`;
 
-    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }]
-    }, {
-      headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}` }
-    });
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompt }],
+      },
+      {
+        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+      },
+    );
 
     res.json({ reply: response.data.choices[0].message.content.trim() });
   } catch (err) {
@@ -501,4 +672,312 @@ app.post("/api/chatbot", async (req, res) => {
   }
 });
 
-module.exports = app;
+// ─── 8. PRICE TRACKING & WATCHLIST ───────────────────────────────────────────
+
+// Add product to watchlist for price tracking
+router.post("/watchlist/add", async (req, res) => {
+  const { username, product } = req.body;
+  if (!username || !product)
+    return res.status(400).json({ message: "Missing username or product" });
+
+  try {
+    const db = await connectDB();
+    const watchlistCollection = db.collection("watchlist");
+
+    // Create unique product ID (title + price as initial reference)
+    const productId = `${product.title.substring(0, 50)}_${Date.now()}`;
+
+    const watchlistEntry = {
+      username,
+      productId,
+      product: {
+        title: product.title,
+        image: product.image,
+        rating: product.rating,
+      },
+      priceHistory: [
+        {
+          price: parseInt(product.price) || 0,
+          timestamp: new Date(),
+          source: product.store || "Unknown",
+        },
+      ],
+      isActive: true,
+      addedAt: new Date(),
+      lastChecked: new Date(),
+      priceDropNotifications: [],
+    };
+
+    const result = await watchlistCollection.insertOne(watchlistEntry);
+    res.json({
+      message: "Product added to watchlist",
+      watchlistId: result.insertedId,
+    });
+  } catch (err) {
+    console.error("Add to watchlist error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get user's watchlist with price history
+router.get("/watchlist/:username", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const watchlist = await db
+      .collection("watchlist")
+      .find({ username: req.params.username, isActive: true })
+      .toArray();
+
+    const enrichedWatchlist = watchlist.map((item) => ({
+      _id: item._id,
+      product: item.product,
+      currentPrice: item.priceHistory[item.priceHistory.length - 1]?.price || 0,
+      previousPrice:
+        item.priceHistory.length > 1
+          ? item.priceHistory[item.priceHistory.length - 2]?.price
+          : null,
+      priceHistory: item.priceHistory,
+      addedAt: item.addedAt,
+      lastChecked: item.lastChecked,
+      priceDrops: item.priceDropNotifications || [],
+    }));
+
+    res.json(enrichedWatchlist);
+  } catch (err) {
+    console.error("Get watchlist error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Remove product from watchlist
+router.delete("/watchlist/:watchlistId", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const { ObjectId } = require("mongodb");
+    await db.collection("watchlist").updateOne(
+      { _id: new ObjectId(req.params.watchlistId) },
+      { $set: { isActive: false } }
+    );
+    res.json({ message: "Product removed from watchlist" });
+  } catch (err) {
+    console.error("Remove from watchlist error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── PRICE CHECKING & NOTIFICATION LOGIC ─────────────────────────────────────
+
+// Helper: Update product price and check for drops
+async function checkProductPriceDrops(db, watchlistEntry) {
+  try {
+    const currentPrice =
+      watchlistEntry.priceHistory[watchlistEntry.priceHistory.length - 1]
+        ?.price || 0;
+    const previousPrice =
+      watchlistEntry.priceHistory.length > 1
+        ? watchlistEntry.priceHistory[watchlistEntry.priceHistory.length - 2]
+            ?.price
+        : currentPrice;
+
+    // Detect price drop (at least 5% reduction)
+    const priceDropPercentage = ((previousPrice - currentPrice) / previousPrice) * 100;
+
+    if (priceDropPercentage >= 5) {
+      return {
+        hasPriceDrop: true,
+        dropAmount: previousPrice - currentPrice,
+        dropPercentage: priceDropPercentage.toFixed(2),
+        previousPrice,
+        currentPrice,
+      };
+    }
+
+    return { hasPriceDrop: false };
+  } catch (err) {
+    console.error("Price drop check error:", err);
+    return { hasPriceDrop: false };
+  }
+}
+
+// Helper: Send price drop notification email
+async function sendPriceDropEmail(username, product, priceDetails) {
+  try {
+    const discountBadge = Math.round(priceDetails.dropPercentage);
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.08);">
+          <h2 style="color: #1f2937; margin-bottom: 12px;">🎉 Price Drop Alert!</h2>
+          <p style="color: #475569; margin-bottom: 20px; font-size: 16px;">Great news! A product in your watchlist has dropped in price.</p>
+          
+          <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 8px;">
+            <h3 style="color: #1e40af; margin-top: 0;">${product.title}</h3>
+            <div style="display: flex; gap: 20px; margin: 16px 0;">
+              <div>
+                <p style="color: #6b7280; font-size: 12px; margin: 0 0 4px 0;">Previous Price</p>
+                <p style="font-size: 24px; font-weight: 700; color: #9ca3af; margin: 0; text-decoration: line-through;">₹${priceDetails.previousPrice.toLocaleString()}</p>
+              </div>
+              <div style="display: flex; align-items: center;">
+                <span style="font-size: 32px; color: #059669;">→</span>
+              </div>
+              <div>
+                <p style="color: #6b7280; font-size: 12px; margin: 0 0 4px 0;">New Price</p>
+                <p style="font-size: 24px; font-weight: 700; color: #059669; margin: 0;">₹${priceDetails.currentPrice.toLocaleString()}</p>
+              </div>
+            </div>
+            
+            <div style="background: #dcfce7; padding: 12px; border-radius: 8px; margin-top: 16px; text-align: center;">
+              <span style="color: #15803d; font-weight: 700; font-size: 18px;">Save ₹${priceDetails.dropAmount.toLocaleString()} (${discountBadge}% OFF)</span>
+            </div>
+          </div>
+          
+          <p style="color: #475569; margin-top: 20px; font-size: 14px;">Check out your watchlist to view more details and add to cart.</p>
+          <div style="text-align: center; margin-top: 25px;">
+            <a href="http://localhost:3000" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">View Watchlist</a>
+          </div>
+          
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 25px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+            Cognitive Cart Price Tracking System | ${new Date().toLocaleString()}
+          </p>
+        </div>
+      </div>
+    `;
+
+    await emailApi.sendTransacEmail({
+      sender: { email: "aakasltf06@gmail.com", name: "Cognitive Cart" },
+      to: [{ email: username, name: username.split("@")[0] }],
+      subject: `🎉 Price Drop Alert: ${Math.round(priceDetails.dropPercentage)}% OFF on "${product.title.substring(0, 40)}"`,
+      htmlContent,
+    });
+
+    return true;
+  } catch (err) {
+    console.error("Email send error:", err?.response?.body || err.message);
+    return false;
+  }
+}
+
+// Scheduled job: Check all watchlisted products for price changes every 4 hours
+async function monitorPricesScheduled() {
+  try {
+    const db = await connectDB();
+    const watchlistCollection = db.collection("watchlist");
+
+    // Get all active watchlist entries
+    const allWatchedProducts = await watchlistCollection
+      .find({ isActive: true })
+      .toArray();
+
+    console.log(
+      `[PRICE MONITOR] Checking ${allWatchedProducts.length} products for price changes...`
+    );
+
+    for (const watchlistEntry of allWatchedProducts) {
+      try {
+        // Re-fetch current price for the product
+        const searchResults = await Promise.all([
+          scrapeAmazon(watchlistEntry.product.title),
+          scrapeFlipkart(watchlistEntry.product.title),
+          scrapeGoogle(watchlistEntry.product.title),
+        ]);
+
+        // Find best matching product from search results
+        let currentPriceData = null;
+        for (const results of searchResults) {
+          if (results[0]) {
+            currentPriceData = results[0];
+            break;
+          }
+        }
+
+        if (!currentPriceData) continue;
+
+        const newPrice = parseInt(currentPriceData.price) || 0;
+        const oldPrice =
+          watchlistEntry.priceHistory[
+            watchlistEntry.priceHistory.length - 1
+          ]?.price || newPrice;
+
+        // Add new price to history
+        const updatedHistory = [
+          ...watchlistEntry.priceHistory,
+          {
+            price: newPrice,
+            timestamp: new Date(),
+            source: currentPriceData.store || "Unknown",
+          },
+        ];
+
+        // Check for price drop
+        const dropDetails = await checkProductPriceDrops({
+          ...watchlistEntry,
+          priceHistory: updatedHistory,
+        });
+
+        // If price dropped and user hasn't been notified about this drop, send email
+        if (dropDetails.hasPriceDrop) {
+          const lastNotification =
+            watchlistEntry.priceDropNotifications?.[
+              watchlistEntry.priceDropNotifications.length - 1
+            ];
+
+          // Only send if no recent notification (within 24 hours)
+          const shouldNotify =
+            !lastNotification ||
+            Date.now() - lastNotification.timestamp > 24 * 60 * 60 * 1000;
+
+          if (shouldNotify) {
+            const emailSent = await sendPriceDropEmail(
+              watchlistEntry.username,
+              watchlistEntry.product,
+              dropDetails
+            );
+
+            if (emailSent) {
+              console.log(
+                `[PRICE DROP] Notified ${watchlistEntry.username} about ${watchlistEntry.product.title}`
+              );
+            }
+          }
+        }
+
+        // Update watchlist entry with new price history and notification
+        await watchlistCollection.updateOne(
+          { _id: watchlistEntry._id },
+          {
+            $set: {
+              priceHistory: updatedHistory,
+              lastChecked: new Date(),
+              ...(dropDetails.hasPriceDrop && {
+                $push: {
+                  priceDropNotifications: {
+                    dropAmount: dropDetails.dropAmount,
+                    dropPercentage: dropDetails.dropPercentage,
+                    timestamp: new Date(),
+                  },
+                },
+              }),
+            },
+          }
+        );
+      } catch (err) {
+        console.error(
+          `Error checking product ${watchlistEntry.productId}:`,
+          err.message
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[PRICE MONITOR] Error in scheduled job:", err);
+  }
+}
+
+// Start price monitoring every 4 hours (14400000 ms)
+setInterval(monitorPricesScheduled, 4 * 60 * 60 * 1000);
+
+// Optional: Check prices immediately on server startup
+setTimeout(() => {
+  console.log("[PRICE MONITOR] Starting initial price check...");
+  monitorPricesScheduled();
+}, 5000);
+
+module.exports = router;

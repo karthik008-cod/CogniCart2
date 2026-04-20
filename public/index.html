@@ -150,6 +150,19 @@
     </div>
 
     <script>
+    // ─── API BASE URL (auto-detects Live Server vs Node server vs Vercel) ──────
+    // When opened via VS Code Live Server (port 5500) all /api calls would 404
+    // because Live Server has no backend. We detect that and proxy to port 3000.
+    const API_BASE = (() => {
+      const port = location.port;
+      if (port === "5500" || port === "5501") {
+        // Running on Live Server — backend is on localhost:3000
+        return "http://localhost:3000/api";
+      }
+      // Running on Node (port 3000) or on Vercel — use relative path
+      return "/api";
+    })();
+
     // ─── GLOBAL STATE ────────────────────────────────────────────────────────
     let amazonData   = [];
     let flipkartData = [];
@@ -157,6 +170,10 @@
     let currentSort  = "";
     let isSearching  = false;  // FIX: prevents concurrent duplicate searches
     let searchDebounceTimer = null;
+
+    // ─── CHAT ELEMENT REFS (hoisted here so drag listeners can use them) ──────
+    const chatBox  = document.getElementById("chatBox");
+    const closeBtn = document.getElementById("closeChat");
 
     // ─── SINGLE INTERSECTION OBSERVER ────────────────────────────────────────
     // FIX: Was creating a new IntersectionObserver every time setTimeout fired.
@@ -269,7 +286,7 @@
       aiBox.classList.add("active");
 
       try {
-        const res  = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const res  = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}`);
         const data = await res.json();
 
         if (data.error) {
@@ -314,7 +331,7 @@
         // Log to history (fire-and-forget, don't await)
         const loggedUser = localStorage.getItem("loggedUser");
         if (loggedUser) {
-          fetch("/api/history", {
+          fetch(`${API_BASE}/history`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username: loggedUser, searchQuery: q }),
@@ -366,6 +383,12 @@
           title: p.title, price: p.price, image: p.image,
           rating: p.rating, deliveryDays: p.deliveryDays,
         }));
+        const deliveryHtml = p.deliveryDays
+          ? `<p class="delivery">🚚 Delivery: ${p.deliveryDays} day${p.deliveryDays > 1 ? "s" : ""}</p>`
+          : `<p class="delivery" style="color:var(--success)">🚚 In Stock</p>`;
+        const storeBadge = p.store
+          ? `<p class="delivery" style="color:#a78bfa;font-size:0.78rem;margin-top:2px">🏪 ${p.store}</p>`
+          : "";
         return `
           <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay:${index * 0.08}s">
             <img src="${p.image}"
@@ -374,9 +397,11 @@
             <h4>${p.title}</h4>
             <p class="price">₹${p.price}</p>
             <p class="rating">⭐ ${p.rating}</p>
-            <p class="delivery">🚚 Delivery: ${p.deliveryDays} day${p.deliveryDays > 1 ? "s" : ""}</p>
+            ${deliveryHtml}
+            ${storeBadge}
             ${highlight ? "<span class='badge'>Top Choice</span>" : ""}
             <button class="add-cart-btn" data-product="${productData}" onclick="addToCart(this)">Add to Cart</button>
+            <button class="watch-btn" data-product="${productData}" onclick="addToWatchlist(this)" style="background: linear-gradient(135deg, #667eea, #764ba2); margin-top: 8px; padding: 0.6rem;">📊 Watch Price</button>
           </div>`;
       });
 
@@ -402,7 +427,7 @@
       aiBox.classList.add("active");
 
       try {
-        const res  = await fetch("/api/ai-recommendation", {
+        const res  = await fetch(`${API_BASE}/ai-recommendation`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ products: allProducts }),
@@ -479,6 +504,7 @@
         <span class="welcome-text">👤 ${username}</span>
         <button onclick="showSection('orders')" style="background:transparent;border:1px solid var(--primary)">My Orders</button>
         <button onclick="showSection('history')" style="background:transparent;border:1px solid var(--primary)">History</button>
+        <button onclick="window.location.href='watchlist.html'" style="background:transparent;border:1px solid var(--primary)">📊 Watchlist</button>
         <button onclick="showSection('cart')">Cart</button>
         <button class="logout-btn" onclick="logout()">Logout</button>`;
     }
@@ -502,7 +528,7 @@
       btn.disabled = true;
 
       try {
-        const res  = await fetch("/api/send-otp", {
+        const res  = await fetch(`${API_BASE}/send-otp`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username }),
@@ -523,7 +549,7 @@
       const otp      = document.getElementById("otp").value.trim();
       if (!otp) { document.getElementById("authMessage").innerText = "Enter OTP ❌"; return; }
       try {
-        const res  = await fetch("/api/verify-otp", {
+        const res  = await fetch(`${API_BASE}/verify-otp`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, otp }),
@@ -607,6 +633,36 @@
       }
     }
 
+    // ─── WATCHLIST / PRICE TRACKING ──────────────────────────────────────────
+    async function addToWatchlist(btn) {
+      const username = localStorage.getItem("loggedUser");
+      if (!username) {
+        toast("Please login first ⚠️", "error");
+        openAuthModal(false);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Adding…";
+
+      try {
+        const product = JSON.parse(decodeURIComponent(btn.dataset.product || "{}"));
+        const res = await fetch(`${API_BASE}/watchlist/add`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, product }),
+        });
+        const data = await res.json();
+        toast("📊 Added to watchlist! You'll get email alerts on price drops.", "success", 4000);
+        btn.textContent = "✓ Watching";
+      } catch (err) {
+        console.error("Watchlist error:", err);
+        toast("Failed to add to watchlist", "error");
+        btn.disabled = false;
+        btn.textContent = "📊 Watch Price";
+      }
+    }
+
     async function loadCart() {
       const username = localStorage.getItem("loggedUser");
       if (!username) return;
@@ -614,7 +670,7 @@
       document.getElementById("cart").innerHTML =
         "<h3>🛒 Your Cart</h3><p>Loading…</p>";
 
-      const res  = await fetch(`/api/cart/${encodeURIComponent(username)}`);
+      const res  = await fetch(`${API_BASE}/cart/${encodeURIComponent(username)}`);
       const cart = await res.json();
 
       let html = "<h3>🛒 Your Cart</h3><div class='product-grid'>";
@@ -647,7 +703,7 @@
       if (!paymentMethod) { toast("Select a payment method", "error"); return; }
 
       const username = localStorage.getItem("loggedUser");
-      const res      = await fetch("/api/place-order", {
+      const res      = await fetch(`${API_BASE}/place-order`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ username, paymentMethod }),
@@ -660,7 +716,7 @@
 
     async function loadOrders() {
       const username = localStorage.getItem("loggedUser");
-      const res      = await fetch(`/api/orders/${encodeURIComponent(username)}`);
+      const res      = await fetch(`${API_BASE}/orders/${encodeURIComponent(username)}`);
       const orders   = await res.json();
 
       let html = "<h3>📦 My Orders</h3>";
@@ -688,7 +744,7 @@
 
     async function loadHistory() {
       const username = localStorage.getItem("loggedUser");
-      const res      = await fetch(`/api/history/${encodeURIComponent(username)}`);
+      const res      = await fetch(`${API_BASE}/history/${encodeURIComponent(username)}`);
       const history  = await res.json();
 
       let html = "<h3>🕘 Search History</h3><ul style='list-style:none;padding:0'>";
@@ -713,38 +769,39 @@
     // ─── CHATBOT ─────────────────────────────────────────────────────────────
 
     // --- DRAGGABLE CHAT LOGIC ---
+    // chatBox and closeBtn are declared at the top of the script (globally)
+    // so that these drag listeners can safely reference them.
       let isDragging = false, dragStartX, dragStartY, initialLeft, initialTop;
       const chatHeader = document.querySelector(".chat-header");
 
       chatHeader.addEventListener("mousedown", (e) => {
-        if(e.target === closeBtn) return; // Don't drag if they click the X
+        if (e.target === closeBtn) return; // Don't drag if they click the X
         isDragging = true;
         dragStartX = e.clientX;
         dragStartY = e.clientY;
-        
+
         const rect = chatBox.getBoundingClientRect();
         chatBox.style.bottom = "auto";
-        chatBox.style.right = "auto";
-        chatBox.style.left = rect.left + "px";
-        chatBox.style.top = rect.top + "px";
+        chatBox.style.right  = "auto";
+        chatBox.style.left   = rect.left + "px";
+        chatBox.style.top    = rect.top  + "px";
 
         initialLeft = rect.left;
-        initialTop = rect.top;
+        initialTop  = rect.top;
       });
 
       document.addEventListener("mousemove", (e) => {
         if (!isDragging) return;
         e.preventDefault();
         chatBox.style.left = (initialLeft + (e.clientX - dragStartX)) + "px";
-        chatBox.style.top = (initialTop + (e.clientY - dragStartY)) + "px";
+        chatBox.style.top  = (initialTop  + (e.clientY - dragStartY)) + "px";
       });
 
       document.addEventListener("mouseup", () => { isDragging = false; });
 
     document.addEventListener("DOMContentLoaded", function () {
       const chatToggle     = document.getElementById("chatToggle");
-      const chatBox        = document.getElementById("chatBox");
-      const closeBtn       = document.getElementById("closeChat");
+      // chatBox and closeBtn already declared globally above
       const sendBtn        = document.getElementById("sendBtn");
       const input          = document.getElementById("chatInput");
       const messagesDiv    = document.getElementById("chatMessages");
@@ -799,10 +856,10 @@
         try {
           // Grab the username from storage to send to the AI
           const username = localStorage.getItem("loggedUser");
-          const res  = await fetch("/api/chatbot", {
+          const res  = await fetch(`${API_BASE}/chatbot`, {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ message, username }), // username added here
+            body:    JSON.stringify({ message, username }),
           });
           const data = await res.json();
           document.getElementById("typingIndicator")?.remove();
