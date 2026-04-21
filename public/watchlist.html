@@ -5,225 +5,133 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Price Watchlist - Cognitive Cart</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
         :root {
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --surface2: #273549;
-            --border: rgba(255,255,255,0.08);
-            --accent: #6366f1;
-            --accent2: #8b5cf6;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --text: #f1f5f9;
-            --text-muted: #94a3b8;
-            --radius: 14px;
+            --bg: #080e1c; --surface: #111827; --surface2: #1a2235;
+            --border: rgba(255,255,255,0.07); --accent: #6366f1; --accent2: #8b5cf6;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --text: #f1f5f9; --text-muted: #64748b; --radius: 16px;
         }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            padding: 0 0 60px;
-        }
-
-        /* ── Toast ── */
-        #toast-container {
-            position: fixed; bottom: 30px; right: 30px;
-            display: flex; flex-direction: column; gap: 10px;
-            z-index: 9999; pointer-events: none;
-        }
-        .toast {
-            padding: 13px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 600;
-            background: var(--surface2); border: 1px solid var(--border);
-            color: var(--text); backdrop-filter: blur(12px);
-            transform: translateX(120%); opacity: 0;
-            transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.35s;
-            pointer-events: none; max-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        }
+        /* Toast */
+        #toast-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
+        .toast { padding: 13px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); color: var(--text); backdrop-filter: blur(12px); transform: translateX(120%); opacity: 0; transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.35s; pointer-events: none; max-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
         .toast.show { transform: translateX(0); opacity: 1; }
         .toast.success { border-color: var(--success); color: var(--success); }
         .toast.error   { border-color: var(--danger);  color: var(--danger); }
         .toast.info    { border-color: var(--accent);  color: #a5b4fc; }
 
-        /* ── Confirm Modal ── */
-        #confirmModal {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
-            z-index: 10000; align-items: center; justify-content: center;
-        }
+        /* Confirm Modal */
+        #confirmModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; }
         #confirmModal.open { display: flex; }
-        .confirm-box {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 20px; padding: 32px 28px; max-width: 360px; width: 90%;
-            text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
-            animation: popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
-        }
+        .confirm-box { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 36px 32px; max-width: 360px; width: 90%; text-align: center; box-shadow: 0 32px 80px rgba(0,0,0,0.6); animation: popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
         @keyframes popIn { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
-        .confirm-box .icon { font-size: 2.5rem; margin-bottom: 14px; }
-        .confirm-box h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--text); }
-        .confirm-box p  { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 24px; }
-        .confirm-actions { display: flex; gap: 12px; justify-content: center; }
-        .confirm-actions button {
-            flex: 1; padding: 11px; border: none; border-radius: 10px;
-            font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s;
-        }
-        .confirm-actions button:hover { opacity: 0.85; }
-        .btn-yes { background: var(--danger);  color: #fff; }
+        .confirm-box .icon { font-size: 3rem; margin-bottom: 16px; }
+        .confirm-box h3 { font-size: 1.15rem; margin-bottom: 8px; }
+        .confirm-box p  { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6; }
+        .confirm-actions { display: flex; gap: 12px; }
+        .confirm-actions button { flex: 1; padding: 12px; border: none; border-radius: 12px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
+        .confirm-actions button:hover { opacity: 0.85; transform: scale(0.97); }
+        .btn-yes { background: var(--danger); color: #fff; }
         .btn-no  { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
 
-        /* ── Nav ── */
-        nav {
-            background: rgba(30,41,59,0.9); backdrop-filter: blur(12px);
-            padding: 1rem 2rem; border-bottom: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center;
-            position: sticky; top: 0; z-index: 100;
-        }
-        nav h1 { font-size: 1.25rem; font-weight: 700; }
-        nav h1 span { color: var(--accent); }
+        /* Nav */
+        nav { background: rgba(8,14,28,0.85); backdrop-filter: blur(16px); padding: 1rem 2.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        nav h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+        nav h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; color: transparent; }
         .nav-links { display: flex; gap: 6px; align-items: center; }
-        .nav-links a {
-            color: var(--text-muted); text-decoration: none; font-size: 0.88rem;
-            font-weight: 500; padding: 7px 14px; border-radius: 8px;
-            transition: background 0.2s, color 0.2s;
-        }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; transition: background 0.2s, color 0.2s; }
         .nav-links a:hover { background: var(--surface2); color: var(--text); }
         .nav-links a.active { background: var(--accent); color: #fff; }
+        .nav-pill { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 20px !important; color: var(--text) !important; }
+        .nav-pill:hover { background: rgba(255,255,255,0.1) !important; }
 
-        /* ── Page Layout ── */
-        .page-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 20px; }
+        /* Page */
+        .page-wrap { max-width: 1300px; margin: 0 auto; padding: 36px 24px; }
+        .page-header { margin-bottom: 36px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+        .page-header-text h2 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .page-header-text p  { color: var(--text-muted); font-size: 0.9rem; }
+        .last-updated { font-size: 0.78rem; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; }
 
-        .page-header {
-            margin-bottom: 32px;
-        }
-        .page-header h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 6px; }
-        .page-header p  { color: var(--text-muted); font-size: 0.9rem; }
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 36px; }
+        .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 20px; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+        .stat-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .stat-box.blue::before   { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+        .stat-box.green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+        .stat-box.amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .stat-box.pink::before   { background: linear-gradient(90deg, #ec4899, #f472b6); }
+        .stat-box:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
+        .stat-emoji { font-size: 1.6rem; margin-bottom: 10px; }
+        .stat-value { font-size: 1.9rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+        .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; }
 
-        /* ── Stats ── */
-        .stats {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 16px; margin-bottom: 32px;
-        }
-        .stat-box {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius); padding: 20px; text-align: center;
-            transition: transform 0.2s;
-        }
-        .stat-box:hover { transform: translateY(-3px); }
-        .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent); }
-        .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;
-                       letter-spacing: 0.6px; margin-top: 6px; }
+        /* Grid */
+        .watchlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px; }
 
-        /* ── Grid ── */
-        .watchlist-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px;
-        }
+        /* Card */
+        .watchlist-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
+        .watchlist-card:hover { transform: translateY(-5px); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .watchlist-card.has-drop { border-color: rgba(16,185,129,0.3); box-shadow: 0 0 0 1px rgba(16,185,129,0.15); }
 
-        /* ── Card ── */
-        .watchlist-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius); overflow: hidden;
-            transition: transform 0.25s, box-shadow 0.25s;
-        }
-        .watchlist-card:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(0,0,0,0.4); }
-
-        .product-image {
-            width: 100%; height: 200px; background: var(--surface2);
-            display: flex; align-items: center; justify-content: center; overflow: hidden;
-        }
-        .product-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .product-image { width: 100%; height: 210px; background: linear-gradient(135deg, #111827, #1a2235); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+        .product-image img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.4s; }
+        .watchlist-card:hover .product-image img { transform: scale(1.05); }
+        .store-badge { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 8px; }
+        .drop-badge { position: absolute; top: 12px; right: 12px; background: linear-gradient(135deg, rgba(16,185,129,0.9), rgba(5,150,105,0.9)); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 5px 10px; border-radius: 8px; letter-spacing: 0.3px; }
 
         .card-content { padding: 20px; }
+        .product-title { font-size: 0.93rem; font-weight: 600; color: var(--text); margin-bottom: 12px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-        .product-title { font-size: 0.95rem; font-weight: 600; color: var(--text);
-                         margin-bottom: 10px; line-height: 1.4; }
+        .drop-notification { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05)); border: 1px solid rgba(16,185,129,0.2); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px; }
+        .drop-notification span { color: var(--success); font-weight: 600; }
 
-        .rating { color: #fbbf24; font-size: 0.82rem; margin-bottom: 12px; }
+        .price-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+        .current-price { font-size: 1.8rem; font-weight: 800; color: var(--success); letter-spacing: -1px; }
+        .previous-price { font-size: 0.95rem; color: var(--text-muted); text-decoration: line-through; }
+        .pct-badge { background: rgba(16,185,129,0.15); color: var(--success); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(16,185,129,0.25); }
 
-        /* ── Drop notification banner ── */
-        .drop-notification {
-            background: rgba(245,158,11,0.12); border-left: 4px solid var(--warning);
-            padding: 10px 14px; border-radius: 8px; margin-bottom: 14px;
-            font-size: 0.82rem; color: #fde68a;
-        }
-        .drop-notification strong { color: var(--warning); }
+        .price-meta { display: flex; gap: 16px; margin-bottom: 16px; }
+        .price-meta-item { font-size: 0.78rem; color: var(--text-muted); }
+        .price-meta-item strong { color: var(--text); }
 
-        /* ── Price ── */
-        .price-section { margin-bottom: 16px; }
-        .price-display { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-        .current-price { font-size: 1.75rem; font-weight: 700; color: var(--success); }
-        .previous-price { font-size: 1rem; color: var(--text-muted); text-decoration: line-through; }
-        .price-drop-badge {
-            background: rgba(16,185,129,0.15); color: var(--success);
-            padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.8rem;
-            border: 1px solid rgba(16,185,129,0.3);
-        }
+        .chart-section { background: var(--surface2); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+        .chart-section h4 { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .chart-container { position: relative; height: 90px; }
 
-        /* ── Price history ── */
-        .price-history {
-            background: var(--surface2); border-radius: 10px; padding: 12px; margin-bottom: 16px;
-        }
-        .price-history h4 {
-            font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 0.6px; margin-bottom: 12px;
-        }
-        .chart-container {
-            position: relative; height: 100px; width: 100%;
-        }
+        .alert-toggle { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; }
+        .alert-on  { color: var(--success); font-weight: 600; }
+        .alert-off { color: var(--text-muted); }
 
-        /* ── Actions ── */
         .card-actions { display: flex; gap: 10px; }
-        .card-actions button {
-            flex: 1; padding: 10px; border: none; border-radius: 9px;
-            font-weight: 700; font-size: 0.84rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s;
-        }
+        .card-actions button { flex: 1; padding: 11px; border: none; border-radius: 11px; font-weight: 700; font-size: 0.84rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
         .card-actions button:hover { opacity: 0.85; transform: scale(0.98); }
-        .btn-remove { background: rgba(239,68,68,0.15); color: #fca5a5;
-                      border: 1px solid rgba(239,68,68,0.3); }
-        .btn-cart   { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+        .btn-remove { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
+        .btn-buy { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px; }
 
-        /* ── Empty state ── */
-        .empty-state {
-            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-            padding: 60px 24px; text-align: center; display: none;
-        }
-        .empty-state .emoji { font-size: 3rem; margin-bottom: 16px; }
-        .empty-state h3 { font-size: 1.2rem; margin-bottom: 8px; }
-        .empty-state p  { color: var(--text-muted); margin-bottom: 28px; font-size: 0.9rem; }
-        .btn-primary {
-            display: inline-block; background: linear-gradient(135deg, var(--accent), var(--accent2));
-            color: #fff; padding: 12px 28px; border-radius: 10px; text-decoration: none;
-            font-weight: 700; font-size: 0.9rem; transition: opacity 0.2s;
-        }
-        .btn-primary:hover { opacity: 0.85; }
+        /* Empty */
+        .empty-state { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 70px 24px; text-align: center; display: none; }
+        .empty-emoji { font-size: 4rem; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 10px; }
+        .empty-state p  { color: var(--text-muted); margin-bottom: 28px; font-size: 0.9rem; line-height: 1.6; }
+        .btn-primary { display: inline-block; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; padding: 13px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.9rem; transition: opacity 0.2s, transform 0.15s; }
+        .btn-primary:hover { opacity: 0.85; transform: scale(0.98); }
 
-        /* ── Loading ── */
-        #loadingState { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-        .spinner {
-            width: 44px; height: 44px; border: 4px solid var(--border);
-            border-top-color: var(--accent); border-radius: 50%;
-            animation: spin 0.8s linear infinite; margin: 0 auto 16px;
-        }
+        /* Loading */
+        #loadingState { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+        .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        @media (max-width: 640px) {
-            .watchlist-grid { grid-template-columns: 1fr; }
-            nav { flex-direction: column; gap: 12px; text-align: center; padding: 1rem; }
-            .page-wrap { padding: 20px 14px; }
-        }
+        @media (max-width: 640px) { .watchlist-grid { grid-template-columns: 1fr; } nav { flex-direction: column; gap: 12px; padding: 1rem; } .page-wrap { padding: 20px 14px; } .page-header { flex-direction: column; align-items: flex-start; } }
     </style>
 </head>
 <body>
-
 <div id="toast-container"></div>
 
-<!-- Custom Confirm Dialog (replaces window.confirm) -->
 <div id="confirmModal">
     <div class="confirm-box">
         <div class="icon">🗑️</div>
@@ -247,36 +155,33 @@
 
 <div class="page-wrap">
     <div class="page-header">
-        <h2>📊 Price Watchlist</h2>
-        <p>Monitor products and get email alerts when prices drop by 5% or more.</p>
+        <div class="page-header-text">
+            <h2>📊 Price Watchlist</h2>
+            <p>Track prices across all stores. Get email alerts the moment they drop.</p>
+        </div>
+        <div class="last-updated" id="lastUpdated">Refreshes every 10 min</div>
     </div>
 
-    <div id="loadingState">
-        <div class="spinner"></div>
-        <p>Loading your watchlist…</p>
-    </div>
-
+    <div id="loadingState"><div class="spinner"></div><p>Loading your watchlist…</p></div>
     <div id="statsContainer" class="stats" style="display:none"></div>
     <div id="watchlistContainer" class="watchlist-grid"></div>
     <div id="emptyState" class="empty-state">
-        <div class="emoji">👀</div>
-        <h3>No Products Watched Yet</h3>
-        <p>Search for products and click "Watch Price" to start tracking price drops!</p>
-        <a href="index.html" class="btn-primary">Search &amp; Watch Products</a>
+        <div class="empty-emoji">👀</div>
+        <h3>Nothing on Watch Yet</h3>
+        <p>Search for products and click "Watch Price" to start tracking drops and get email alerts.</p>
+        <a href="index.html" class="btn-primary">🔍 Find Products to Watch</a>
     </div>
 </div>
 
 <script>
-    // ── API BASE: auto-detect (no hardcoded localhost!) ──
     const API_BASE = (() => {
         const port = location.port;
         if (location.protocol === "file:") return "http://localhost:3000/api";
         if (port === "5500" || port === "5501") return "http://localhost:3000/api";
         if (port === "3000") return "http://localhost:3000/api";
-        return "/api"; // Vercel or any other host — use relative path
+        return "/api";
     })();
 
-    // ── Toast notifications ──
     function toast(msg, type = "info", duration = 3500) {
         const container = document.getElementById("toast-container");
         const div = document.createElement("div");
@@ -284,54 +189,29 @@
         div.textContent = msg;
         container.appendChild(div);
         requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add("show")));
-        setTimeout(() => {
-            div.classList.remove("show");
-            setTimeout(() => div.remove(), 400);
-        }, duration);
+        setTimeout(() => { div.classList.remove("show"); setTimeout(() => div.remove(), 400); }, duration);
     }
 
-    // ── Custom confirm dialog (replaces window.confirm) ──
     function showConfirm(onYes) {
         const modal = document.getElementById("confirmModal");
         modal.classList.add("open");
-        document.getElementById("confirmYes").onclick = () => {
-            modal.classList.remove("open");
-            onYes();
-        };
-        document.getElementById("confirmNo").onclick = () => modal.classList.remove("open");
+        document.getElementById("confirmYes").onclick = () => { modal.classList.remove("open"); onYes(); };
+        document.getElementById("confirmNo").onclick  = () => modal.classList.remove("open");
     }
 
-    // ── Helpers ──
-    function formatCurrency(amount) {
-        return `₹${parseInt(amount || 0).toLocaleString("en-IN")}`;
-    }
-    function calculateTotalSavings(items) {
-        return items.reduce((t, item) => {
-            const cur = item.currentPrice || 0;
-            const prev = item.previousPrice || cur;
-            return t + Math.max(0, prev - cur);
-        }, 0);
-    }
+    function fc(n) { return `₹${parseInt(n || 0).toLocaleString("en-IN")}`; }
 
-    // ── Load watchlist ──
     async function loadWatchlist() {
         const user = localStorage.getItem("loggedUser");
-        if (!user) {
-            window.location.href = "index.html";
-            return;
-        }
+        if (!user) { window.location.href = "index.html"; return; }
 
-        // Inject Profile Pill if not present
+        // Profile Pill
         const nav = document.getElementById("navLinks");
         if (!document.getElementById("profilePill")) {
-            const profileBtn = document.createElement("a");
-            profileBtn.id = "profilePill";
-            profileBtn.href = "profile.html";
-            profileBtn.innerHTML = `👤 ${user}`;
-            profileBtn.style.cssText = "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 14px; margin-right: 10px; transition: all 0.2s; color: var(--text); display: inline-flex; align-items: center; text-decoration: none;";
-            profileBtn.onmouseover = () => profileBtn.style.background = 'rgba(255,255,255,0.1)';
-            profileBtn.onmouseout = () => profileBtn.style.background = 'rgba(255,255,255,0.05)';
-            nav.insertBefore(profileBtn, document.getElementById("logoutBtn"));
+            const a = document.createElement("a");
+            a.id = "profilePill"; a.href = "profile.html"; a.className = "nav-pill";
+            a.innerHTML = `👤 ${user}`;
+            nav.insertBefore(a, document.getElementById("logoutBtn"));
         }
 
         document.getElementById("loadingState").style.display = "block";
@@ -341,10 +221,11 @@
 
         try {
             const res = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(user)}`);
-            if (!res.ok) throw new Error(`Server responded ${res.status}`);
+            if (!res.ok) throw new Error(`Server ${res.status}`);
             const watchlist = await res.json();
 
             document.getElementById("loadingState").style.display = "none";
+            document.getElementById("lastUpdated").textContent = "Updated " + new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
 
             if (!Array.isArray(watchlist) || watchlist.length === 0) {
                 document.getElementById("emptyState").style.display = "block";
@@ -352,183 +233,137 @@
             }
 
             // Stats
-            const totalSavings = calculateTotalSavings(watchlist);
-            const itemsWithDrops = watchlist.filter(i => i.priceDrops?.length > 0).length;
+            const totalSavings = watchlist.reduce((t, i) => t + Math.max(0, (i.previousPrice||i.currentPrice) - i.currentPrice), 0);
+            const withDrops    = watchlist.filter(i => i.priceDrops?.length > 0).length;
+            const totalValue   = watchlist.reduce((t, i) => t + (i.currentPrice || 0), 0);
+            const lowestItem   = watchlist.reduce((a, b) => (a.currentPrice || 0) < (b.currentPrice || 0) ? a : b);
+
             document.getElementById("statsContainer").style.display = "grid";
             document.getElementById("statsContainer").innerHTML = `
-                <div class="stat-box">
-                    <div class="stat-value">${watchlist.length}</div>
-                    <div class="stat-label">Total Watching</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">${itemsWithDrops}</div>
-                    <div class="stat-label">Price Drops</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">${formatCurrency(totalSavings)}</div>
-                    <div class="stat-label">Total Savings</div>
-                </div>`;
+                <div class="stat-box blue"><div class="stat-emoji">👁️</div><div class="stat-value">${watchlist.length}</div><div class="stat-label">Watching</div></div>
+                <div class="stat-box amber"><div class="stat-emoji">🔔</div><div class="stat-value">${withDrops}</div><div class="stat-label">Price Drops</div></div>
+                <div class="stat-box green"><div class="stat-emoji">💰</div><div class="stat-value">${fc(totalSavings)}</div><div class="stat-label">Total Saved</div></div>
+                <div class="stat-box pink"><div class="stat-emoji">🛍️</div><div class="stat-value">${fc(totalValue)}</div><div class="stat-label">Portfolio Value</div></div>`;
 
-            // Cards
-            document.getElementById("watchlistContainer").innerHTML =
-                watchlist.map(item => createWatchlistCard(item)).join("");
+            // Render cards
+            document.getElementById("watchlistContainer").innerHTML = watchlist.map(item => createCard(item)).join("");
 
-            // Render Charts & Wire Buttons
+            // Charts + buttons
             watchlist.forEach(item => {
-                renderPriceChart(item);
-                document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => {
-                    showConfirm(() => removeFromWatchlist(item._id));
-                });
-                document.getElementById(`cart-${item._id}`)?.addEventListener("click", () => {
-                    toast("Open the main search page to add products to cart.", "info");
-                });
+                renderChart(item);
+                document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => showConfirm(() => removeItem(item._id)));
             });
 
         } catch (err) {
-            console.error("Failed to load watchlist:", err);
             document.getElementById("loadingState").style.display = "none";
             toast("Failed to load watchlist: " + err.message, "error", 5000);
             document.getElementById("emptyState").style.display = "block";
         }
     }
 
-    function createWatchlistCard(item) {
+    function createCard(item) {
         const hasDrop = item.previousPrice && item.currentPrice < item.previousPrice;
-        const dropInfo = hasDrop ? {
-            amount:  item.previousPrice - item.currentPrice,
-            percent: ((item.previousPrice - item.currentPrice) / item.previousPrice * 100).toFixed(1)
-        } : null;
-
-        const recentNote = item.priceDrops?.length > 0
-            ? item.priceDrops[item.priceDrops.length - 1] : null;
+        const pct = hasDrop ? ((item.previousPrice - item.currentPrice) / item.previousPrice * 100).toFixed(1) : null;
+        const recentDrop = item.priceDrops?.length > 0 ? item.priceDrops[item.priceDrops.length - 1] : null;
+        const lowestPrice = item.priceHistory?.length ? Math.min(...item.priceHistory.map(h => h.price)) : item.currentPrice;
+        const buyLink = item.product?.link || "#";
 
         return `
-            <div class="watchlist-card">
-                <div class="product-image">
-                    <img src="${item.product.image || ""}"
-                         alt="${item.product.title}"
-                         onerror="this.src='https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=400&q=80'">
+        <div class="watchlist-card ${hasDrop ? 'has-drop' : ''}">
+            <div class="product-image">
+                <img src="${item.product?.image || ''}" alt="${item.product?.title || ''}" onerror="this.src='https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=400&q=80'">
+                ${item.product?.store ? `<div class="store-badge">${item.product.store}</div>` : ''}
+                ${hasDrop ? `<div class="drop-badge">↓ ${pct}% OFF</div>` : ''}
+            </div>
+            <div class="card-content">
+                <div class="product-title" title="${item.product?.title || ''}">${item.product?.title || 'Product'}</div>
+
+                ${recentDrop ? `
+                <div class="drop-notification">
+                    🎉 <span>Price Dropped!</span> You saved ${fc(recentDrop.dropAmount)} (${recentDrop.dropPercentage}% off)
+                </div>` : ''}
+
+                <div class="price-row">
+                    <div class="current-price">${fc(item.currentPrice)}</div>
+                    ${hasDrop ? `<div class="previous-price">${fc(item.previousPrice)}</div><div class="pct-badge">−${pct}%</div>` : ''}
                 </div>
-                <div class="card-content">
-                    <div class="product-title">${item.product.title}</div>
-                    ${item.product.rating ? `<div class="rating">⭐ ${item.product.rating} Rating</div>` : ""}
 
-                    ${recentNote ? `
-                    <div class="drop-notification">
-                        <strong>🎉 Price Dropped!</strong>
-                        ${recentNote.dropPercentage}% off — you saved ₹${parseInt(recentNote.dropAmount || 0).toLocaleString()}
-                    </div>` : ""}
-
-                    <div class="price-section">
-                        <div class="price-display">
-                            <div class="current-price">${formatCurrency(item.currentPrice)}</div>
-                            ${item.previousPrice && item.currentPrice !== item.previousPrice
-                                ? `<div class="previous-price">${formatCurrency(item.previousPrice)}</div>` : ""}
-                        </div>
-                        ${dropInfo ? `
-                        <div class="price-drop-badge">↓ Save ${formatCurrency(dropInfo.amount)} (${dropInfo.percent}% OFF)</div>
-                        ` : ""}
-                    </div>
-
-                    <div class="price-history">
-                        <h4>Price Trend</h4>
-                        <div class="chart-container">
-                            <canvas id="chart-${item._id}"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="card-actions">
-                        <button class="btn-remove" id="remove-${item._id}">🗑 Remove</button>
-                        <button class="btn-cart"   id="cart-${item._id}">🛒 Add to Cart</button>
-                    </div>
+                <div class="price-meta">
+                    <div class="price-meta-item">All-time Low <strong style="color:var(--success)">${fc(lowestPrice)}</strong></div>
+                    ${item.product?.rating ? `<div class="price-meta-item">Rating <strong>⭐ ${item.product.rating}</strong></div>` : ''}
+                    <div class="price-meta-item">Checks <strong>${item.priceHistory?.length || 1}</strong></div>
                 </div>
-            </div>`;
+
+                <div class="chart-section">
+                    <h4>
+                        <span>Price Trend</span>
+                        <span style="color:var(--accent);font-weight:600">${item.priceHistory?.length || 1} data points</span>
+                    </h4>
+                    <div class="chart-container"><canvas id="chart-${item._id}"></canvas></div>
+                </div>
+
+                <div class="alert-toggle">
+                    <span>🔔 Email Alerts</span>
+                    <span class="alert-on">Active — drops &gt;5%</span>
+                </div>
+
+                <div class="card-actions">
+                    <button class="btn-remove" id="remove-${item._id}">🗑 Remove</button>
+                    ${buyLink !== '#' ? `<a class="btn-buy card-actions" style="flex:1;border-radius:11px;font-weight:700;font-size:0.84rem" href="${buyLink}" target="_blank" rel="noopener">🛒 Buy Now</a>` : `<button class="btn-buy">🛒 Search Again</button>`}
+                </div>
+            </div>
+        </div>`;
     }
 
-    function renderPriceChart(item) {
+    function renderChart(item) {
         const ctx = document.getElementById(`chart-${item._id}`);
         if (!ctx) return;
 
-        // Ensure we have at least 2 points to draw a line. If only 1, duplicate it.
-        let history = [...item.priceHistory].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
-        if (history.length === 1) {
-            history.unshift({ ...history[0], timestamp: new Date(new Date(history[0].timestamp).getTime() - 86400000).toISOString() });
-        }
+        let history = [...(item.priceHistory || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        if (history.length < 2) history.unshift({ ...history[0], timestamp: new Date(new Date((history[0]?.timestamp) || Date.now()).getTime() - 86400000).toISOString() });
 
         const labels = history.map(h => new Date(h.timestamp).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' }));
-        const data = history.map(h => h.price);
+        const data   = history.map(h => h.price);
+        const isDown = data[data.length - 1] < data[0];
 
-        // Calculate gradient
-        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 100);
-        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
-        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+        const gradFill = ctx.getContext('2d').createLinearGradient(0, 0, 0, 90);
+        gradFill.addColorStop(0, isDown ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)');
+        gradFill.addColorStop(1, 'rgba(0,0,0,0)');
 
         new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Price',
-                    data: data,
-                    borderColor: '#6366f1',
-                    backgroundColor: gradient,
-                    borderWidth: 2,
-                    pointBackgroundColor: '#8b5cf6',
-                    pointBorderColor: '#fff',
-                    pointRadius: 4,
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
+            data: { labels, datasets: [{ data, borderColor: isDown ? '#10b981' : '#6366f1', backgroundColor: gradFill, borderWidth: 2, pointBackgroundColor: isDown ? '#10b981' : '#6366f1', pointBorderColor: '#fff', pointRadius: 3, fill: true, tension: 0.4 }] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => formatCurrency(context.raw)
-                        }
-                    }
-                },
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fc(ctx.raw) } } },
                 scales: {
                     x: { display: false },
-                    y: { 
-                        display: false,
-                        min: Math.min(...data) * 0.95,
-                        max: Math.max(...data) * 1.05
-                    }
+                    y: { display: false, min: Math.min(...data) * 0.94, max: Math.max(...data) * 1.06 }
                 },
-                interaction: {
-                    intersect: false,
-                    mode: 'index',
-                },
+                interaction: { intersect: false, mode: 'index' }
             }
         });
     }
 
-    async function removeFromWatchlist(watchlistId) {
+    async function removeItem(id) {
         try {
-            const res = await fetch(`${API_BASE}/watchlist/${watchlistId}`, { method: "DELETE" });
-            if (!res.ok) throw new Error(`Server responded ${res.status}`);
-            toast("Product removed from watchlist.", "success");
+            const res = await fetch(`${API_BASE}/watchlist/${id}`, { method: "DELETE" });
+            if (!res.ok) throw new Error(`Server ${res.status}`);
+            toast("Removed from watchlist ✓", "success");
             loadWatchlist();
         } catch (err) {
-            console.error("Remove error:", err);
-            toast("Failed to remove product: " + err.message, "error");
+            toast("Failed to remove: " + err.message, "error");
         }
     }
 
-    // ── Logout ──
-    document.getElementById("logoutBtn").addEventListener("click", (e) => {
+    document.getElementById("logoutBtn").addEventListener("click", e => {
         e.preventDefault();
         localStorage.removeItem("loggedUser");
         window.location.href = "index.html";
     });
 
-    // ── Init ──
     loadWatchlist();
-    setInterval(loadWatchlist, 10 * 60 * 1000); // refresh every 10 min
+    setInterval(loadWatchlist, 10 * 60 * 1000);
 </script>
 </body>
 </html>

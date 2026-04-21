@@ -3,298 +3,354 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Profile - Cognitive Cart</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>My Profile - Cognitive Cart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
         :root {
-            --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
-            --accent: #6366f1; --accent-hover: #4f46e5;
-            --text: #f8fafc; --text-muted: #94a3b8;
-            --border: #334155; --success: #10b981; --danger: #ef4444;
+            --bg: #080e1c; --surface: #111827; --surface2: #1a2235;
+            --border: rgba(255,255,255,0.07); --accent: #6366f1; --accent2: #8b5cf6;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --text: #f1f5f9; --text-muted: #64748b;
         }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
 
-        body {
-            font-family: 'Inter', sans-serif; background-color: var(--bg);
-            color: var(--text); padding-bottom: 50px; min-height: 100vh;
-        }
+        nav { background: rgba(8,14,28,0.85); backdrop-filter: blur(16px); padding: 1rem 2.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        nav h2 { font-size: 1.3rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #f472b6); -webkit-background-clip: text; color: transparent; cursor: pointer; }
+        .nav-links { display: flex; gap: 6px; align-items: center; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; transition: background 0.2s, color 0.2s; }
+        .nav-links a:hover { background: var(--surface2); color: var(--text); }
+        .nav-pill { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 20px !important; color: var(--text) !important; }
 
-        /* ── Navbar ── */
-        .top-bar {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 20px 40px; background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
-            position: sticky; top: 0; z-index: 100;
-        }
-        .top-bar h2 { font-size: 1.5rem; background: linear-gradient(135deg, #a78bfa, #f472b6); -webkit-background-clip: text; color: transparent; cursor: pointer; }
-        .nav-links { display: flex; gap: 20px; align-items: center; }
-        .nav-links a { color: var(--text); text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: color 0.2s; }
-        .nav-links a:hover, .nav-links a.active { color: #a78bfa; }
+        .container { max-width: 1300px; margin: 0 auto; padding: 36px 24px; }
 
-        /* ── Container ── */
-        .container {
-            max-width: 1200px; margin: 40px auto; padding: 0 20px;
-        }
-
-        .header { margin-bottom: 30px; }
-        .header h1 { font-size: 2rem; margin-bottom: 5px; }
-        .header p { color: var(--text-muted); }
-
-        /* ── Stats Grid ── */
-        .stats-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px; margin-bottom: 40px;
-        }
-        .stat-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 16px; padding: 25px; display: flex; flex-direction: column;
-            gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        /* Hero banner */
+        .profile-hero {
+            background: linear-gradient(135deg, #1e1b4b 0%, #1e293b 50%, #0f172a 100%);
+            border: 1px solid var(--border); border-radius: 24px; padding: 36px 40px;
+            margin-bottom: 32px; display: flex; align-items: center; gap: 28px;
             position: relative; overflow: hidden;
         }
-        .stat-card::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
-            background: linear-gradient(135deg, var(--accent), #f97316);
+        .profile-hero::before {
+            content: ''; position: absolute; top: -60px; right: -60px;
+            width: 250px; height: 250px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%);
         }
-        .stat-value { font-size: 2.5rem; font-weight: 700; color: #fff; }
-        .stat-label { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; color: #fff; flex-shrink: 0; box-shadow: 0 0 0 4px rgba(99,102,241,0.3); }
+        .hero-info h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+        .hero-info p  { color: var(--text-muted); font-size: 0.9rem; }
+        .hero-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-blue   { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
+        .badge-green  { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-amber  { background: rgba(245,158,11,0.15); color: #fde68a; border: 1px solid rgba(245,158,11,0.25); }
+        .member-since { margin-left: auto; text-align: right; font-size: 0.8rem; color: var(--text-muted); }
+        .member-since strong { display: block; font-size: 1rem; color: var(--text); }
 
-        /* ── Layout ── */
-        .dashboard-layout {
-            display: grid; grid-template-columns: 2fr 1fr; gap: 25px;
-        }
-        @media (max-width: 900px) { .dashboard-layout { grid-template-columns: 1fr; } }
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 24px 20px; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+        .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .sc-blue::after   { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+        .sc-green::after  { background: linear-gradient(90deg, #10b981, #34d399); }
+        .sc-amber::after  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .sc-pink::after   { background: linear-gradient(90deg, #ec4899, #f472b6); }
+        .sc-cyan::after   { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+        .stat-icon { font-size: 1.8rem; margin-bottom: 12px; }
+        .stat-val  { font-size: 2rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 4px; }
+        .stat-lbl  { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; }
+        .stat-sub  { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
 
-        .panel {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-        .panel h3 { font-size: 1.2rem; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        /* Layout */
+        .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .grid-2-eq { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        @media (max-width: 900px) { .grid-2, .grid-2-eq { grid-template-columns: 1fr; } }
 
-        /* ── Chart ── */
-        .chart-container { position: relative; height: 300px; width: 100%; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; }
+        .panel-title { font-size: 1rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 
-        /* ── History List ── */
-        .history-list { display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 10px; }
-        .history-list::-webkit-scrollbar { width: 6px; }
+        .chart-box { position: relative; height: 280px; }
+
+        /* History list */
+        .history-list { display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 6px; }
+        .history-list::-webkit-scrollbar { width: 4px; }
         .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-        .history-item {
-            background: var(--surface2); padding: 15px; border-radius: 10px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .history-query { font-weight: 600; color: #fff; font-size: 0.95rem; }
-        .history-time { font-size: 0.8rem; color: var(--text-muted); }
+        .history-item { background: var(--surface2); padding: 13px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; cursor: pointer; }
+        .history-item:hover { background: rgba(99,102,241,0.1); }
+        .history-q { font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+        .history-t { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
 
-        .not-logged-in { text-align: center; padding: 100px 20px; }
+        /* Watchlist items in profile */
+        .wl-item { display: flex; align-items: center; gap: 14px; padding: 12px; background: var(--surface2); border-radius: 12px; margin-bottom: 10px; transition: background 0.2s; }
+        .wl-item:hover { background: rgba(99,102,241,0.08); }
+        .wl-img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--border); }
+        .wl-info { flex: 1; min-width: 0; }
+        .wl-title { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .wl-price { font-size: 0.9rem; color: var(--success); font-weight: 700; }
+        .wl-drop  { font-size: 0.72rem; background: rgba(16,185,129,0.15); color: var(--success); padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+
+        /* Top searches */
+        .top-q { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .top-q:last-child { border-bottom: none; }
+        .top-q-rank { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); width: 20px; }
+        .top-q-bar-wrap { flex: 1; }
+        .top-q-name { font-size: 0.87rem; font-weight: 600; margin-bottom: 4px; }
+        .top-q-bar { height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+        .top-q-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+        .top-q-count { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+
+        .not-logged-in { text-align: center; padding: 120px 20px; }
         .not-logged-in a { color: var(--accent); text-decoration: none; font-weight: 600; }
+
+        @media (max-width: 640px) { nav { flex-direction: column; gap: 10px; padding: 1rem; } .container { padding: 20px 14px; } .profile-hero { flex-direction: column; align-items: flex-start; padding: 24px 20px; } .member-since { margin-left: 0; text-align: left; } }
     </style>
 </head>
 <body>
-
-    <nav class="top-bar">
-        <h2 onclick="window.location.href='index.html'">🛒 Cognitive Cart</h2>
-        <div class="nav-links" id="navLinks">
-            <a href="index.html">Search</a>
-            <a href="watchlist.html">📊 Watchlist</a>
-            <a href="#" id="logoutBtn">Logout</a>
-        </div>
-    </nav>
-
-    <div class="container" id="mainContainer">
-        <div class="not-logged-in">
-            <h2>You are not logged in.</h2>
-            <p>Please <a href="index.html">Login</a> from the home page to view your profile analytics.</p>
-        </div>
+<nav>
+    <h2 onclick="window.location.href='index.html'">🛒 Cognitive Cart</h2>
+    <div class="nav-links" id="navLinks">
+        <a href="index.html">Search</a>
+        <a href="watchlist.html">📊 Watchlist</a>
+        <a href="#" id="logoutBtn">Logout</a>
     </div>
+</nav>
 
-    <script>
-        const API_BASE = (() => {
-            const port = location.port;
-            if (location.protocol === "file:") return "http://localhost:3000/api";
-            if (port === "5500" || port === "5501") return "http://localhost:3000/api";
-            if (port === "3000") return "http://localhost:3000/api";
-            return "/api"; 
-        })();
+<div class="container" id="mainContainer">
+    <div class="not-logged-in">
+        <h2>You are not logged in.</h2>
+        <p>Please <a href="index.html">Login</a> to view your profile.</p>
+    </div>
+</div>
 
-        let userHistory = [];
-        let watchlistData = [];
+<script>
+    const API_BASE = (() => {
+        const port = location.port;
+        if (location.protocol === "file:") return "http://localhost:3000/api";
+        if (port === "5500" || port === "5501") return "http://localhost:3000/api";
+        if (port === "3000") return "http://localhost:3000/api";
+        return "/api";
+    })();
 
-        window.onload = async () => {
-            const user = localStorage.getItem("loggedUser");
-            if (!user) return;
+    let userHistory = [], watchlistData = [], cartData = [], ordersData = [];
 
-            // Inject Profile Pill
-            const nav = document.getElementById("navLinks");
-            const profileBtn = document.createElement("a");
-            profileBtn.href = "profile.html";
-            profileBtn.innerHTML = `👤 ${user}`;
-            profileBtn.style.cssText = "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 14px; margin-right: 10px; transition: all 0.2s; color: var(--text); display: inline-flex; align-items: center; text-decoration: none;";
-            profileBtn.onmouseover = () => profileBtn.style.background = 'rgba(255,255,255,0.1)';
-            profileBtn.onmouseout = () => profileBtn.style.background = 'rgba(255,255,255,0.05)';
-            nav.insertBefore(profileBtn, document.getElementById("logoutBtn"));
+    window.onload = async () => {
+        const user = localStorage.getItem("loggedUser");
+        if (!user) return;
 
-            document.getElementById("mainContainer").innerHTML = `
-                <div class="header">
-                    <h1>Welcome back, ${user.split('@')[0]} 👋</h1>
-                    <p>Here is your personalized shopping analytics dashboard.</p>
+        // Profile pill in nav
+        const nav = document.getElementById("navLinks");
+        const pill = document.createElement("a");
+        pill.href = "profile.html"; pill.className = "nav-pill";
+        pill.innerHTML = `👤 ${user}`;
+        nav.insertBefore(pill, document.getElementById("logoutBtn"));
+
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("loggedUser");
+            window.location.href = "index.html";
+        });
+
+        const initial = user.split('@')[0].charAt(0).toUpperCase();
+        const firstName = user.split('@')[0];
+
+        document.getElementById("mainContainer").innerHTML = `
+        <div class="profile-hero">
+            <div class="avatar">${initial}</div>
+            <div class="hero-info">
+                <h1>Hey, ${firstName}! 👋</h1>
+                <p>${user}</p>
+                <div class="hero-badges">
+                    <span class="badge badge-blue" id="searcherBadge">🔍 Loading…</span>
+                    <span class="badge badge-green" id="saverBadge">💰 Loading…</span>
+                    <span class="badge badge-amber" id="watcherBadge">👁️ Loading…</span>
                 </div>
-                
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="statSearches">0</div>
-                        <div class="stat-label">Total Searches</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statWatchlist">0</div>
-                        <div class="stat-label">Items Watched</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statTotalValue" style="color: #f472b6">₹0</div>
-                        <div class="stat-label">Total Watchlist Value</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statSavings" style="color: var(--success)">₹0</div>
-                        <div class="stat-label">Savings (Price Drops)</div>
-                    </div>
-                </div>
+            </div>
+            <div class="member-since">
+                <strong id="nowTime">--:--</strong>
+                IST (Asia/Kolkata)
+            </div>
+        </div>
 
-                <div class="dashboard-layout">
-                    <div class="panel">
-                        <h3>📈 Search Activity</h3>
-                        <div class="chart-container">
-                            <canvas id="activityChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="panel">
-                        <h3>🕒 Recent Searches</h3>
-                        <div class="history-list" id="historyList">
-                            <p style="color:var(--text-muted)">Loading history...</p>
-                        </div>
-                    </div>
-                </div>
-            `;
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card sc-blue"><div class="stat-icon">🔍</div><div class="stat-val" id="sSearches">—</div><div class="stat-lbl">Total Searches</div><div class="stat-sub" id="sSearchesSub">Loading…</div></div>
+            <div class="stat-card sc-amber"><div class="stat-icon">👁️</div><div class="stat-val" id="sWatching">—</div><div class="stat-lbl">Watching</div><div class="stat-sub" id="sWatchingSub">Loading…</div></div>
+            <div class="stat-card sc-green"><div class="stat-icon">💰</div><div class="stat-val" id="sSavings">—</div><div class="stat-lbl">Savings</div><div class="stat-sub">from price drops</div></div>
+            <div class="stat-card sc-pink"><div class="stat-icon">🛍️</div><div class="stat-val" id="sValue">—</div><div class="stat-lbl">Watchlist Value</div><div class="stat-sub">current prices</div></div>
+            <div class="stat-card sc-cyan"><div class="stat-icon">📦</div><div class="stat-val" id="sOrders">—</div><div class="stat-lbl">Orders Placed</div><div class="stat-sub" id="sOrdersSub">Loading…</div></div>
+        </div>
 
-            document.getElementById("logoutBtn").addEventListener("click", () => {
-                localStorage.removeItem("loggedUser");
-                window.location.href = "index.html";
-            });
+        <div class="grid-2">
+            <div class="panel">
+                <div class="panel-title">📈 Search Activity — Last 7 Days</div>
+                <div class="chart-box"><canvas id="activityChart"></canvas></div>
+            </div>
+            <div class="panel">
+                <div class="panel-title">🕒 Recent Searches</div>
+                <div class="history-list" id="historyList"><p style="color:var(--text-muted)">Loading…</p></div>
+            </div>
+        </div>
 
-            await Promise.all([fetchHistory(user), fetchWatchlist(user)]);
-            renderDashboard();
-        };
+        <div class="grid-2-eq">
+            <div class="panel">
+                <div class="panel-title">🔥 Top Searched Terms</div>
+                <div id="topSearches"><p style="color:var(--text-muted);font-size:0.88rem">Loading…</p></div>
+            </div>
+            <div class="panel">
+                <div class="panel-title">📊 Watchlist Highlights</div>
+                <div id="wlHighlights" style="max-height:320px;overflow-y:auto"><p style="color:var(--text-muted);font-size:0.88rem">Loading…</p></div>
+            </div>
+        </div>`;
 
-        async function fetchHistory(username) {
-            try {
-                const res = await fetch(`${API_BASE}/history/${encodeURIComponent(username)}`);
-                if (res.ok) userHistory = await res.json();
-            } catch (e) { console.error("Failed to load history:", e); }
-        }
+        // Live clock
+        setInterval(() => {
+            const el = document.getElementById("nowTime");
+            if (el) el.textContent = new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
+        }, 1000);
 
-        async function fetchWatchlist(username) {
-            try {
-                const res = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(username)}`);
-                if (res.ok) watchlistData = await res.json();
-            } catch (e) { console.error("Failed to load watchlist:", e); }
-        }
+        await Promise.all([fetchHistory(user), fetchWatchlist(user), fetchOrders(user)]);
+        renderDashboard();
+    };
 
-        function renderDashboard() {
-            // Stats
-            document.getElementById("statSearches").innerText = userHistory.length;
-            document.getElementById("statWatchlist").innerText = watchlistData.length;
+    const fc = n => `₹${parseInt(n || 0).toLocaleString("en-IN")}`;
 
-            let savings = 0;
-            let totalValue = 0;
-            watchlistData.forEach(item => {
-                if (item.previousPrice && item.currentPrice < item.previousPrice) {
-                    savings += (item.previousPrice - item.currentPrice);
-                }
-                totalValue += (item.currentPrice || 0);
-            });
-            document.getElementById("statSavings").innerText = `₹${savings.toLocaleString("en-IN")}`;
-            document.getElementById("statTotalValue").innerText = `₹${totalValue.toLocaleString("en-IN")}`;
+    async function fetchHistory(u) {
+        try { const r = await fetch(`${API_BASE}/history/${encodeURIComponent(u)}`); if (r.ok) userHistory = await r.json(); } catch {}
+    }
+    async function fetchWatchlist(u) {
+        try { const r = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(u)}`); if (r.ok) watchlistData = await r.json(); } catch {}
+    }
+    async function fetchOrders(u) {
+        try { const r = await fetch(`${API_BASE}/orders/${encodeURIComponent(u)}`); if (r.ok) ordersData = await r.json(); } catch {}
+    }
 
-            // History List
-            const listEl = document.getElementById("historyList");
-            if (!userHistory.length) {
-                listEl.innerHTML = `<p style="color:var(--text-muted)">No recent searches.</p>`;
-            } else {
-                listEl.innerHTML = [...userHistory].reverse().map(h => {
-                    let timeStr = "";
-                    try {
-                        const parsedDate = new Date(h.time);
-                        if (!isNaN(parsedDate.getTime())) {
-                            timeStr = parsedDate.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: '2-digit', minute: '2-digit', hour12: true });
-                            timeStr = parsedDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' }) + ", " + timeStr;
-                        } else {
-                            timeStr = h.time.split(',')[0];
-                        }
-                    } catch(e) { timeStr = h.time.split(',')[0]; }
-                    return `
-                    <div class="history-item">
-                        <div class="history-query">${h.searchQuery}</div>
-                        <div class="history-time">${timeStr}</div>
-                    </div>`;
-                }).join("");
-            }
+    function renderDashboard() {
+        // Stats
+        const savings = watchlistData.reduce((t, i) => t + Math.max(0, (i.previousPrice || i.currentPrice) - i.currentPrice), 0);
+        const totalValue = watchlistData.reduce((t, i) => t + (i.currentPrice || 0), 0);
+        const drops = watchlistData.filter(i => i.priceDrops?.length > 0).length;
 
-            // Activity Chart (searches over last 7 days)
-            renderActivityChart();
-        }
+        document.getElementById("sSearches").textContent = userHistory.length;
+        document.getElementById("sSearchesSub").textContent = userHistory.length ? `Last: "${userHistory[userHistory.length - 1].searchQuery.substring(0, 20)}"` : "No searches yet";
+        document.getElementById("sWatching").textContent = watchlistData.length;
+        document.getElementById("sWatchingSub").textContent = `${drops} price drop${drops !== 1 ? 's' : ''} detected`;
+        document.getElementById("sSavings").textContent = fc(savings);
+        document.getElementById("sValue").textContent = fc(totalValue);
+        document.getElementById("sOrders").textContent = ordersData.length;
+        document.getElementById("sOrdersSub").textContent = ordersData.length ? `Latest: ${ordersData[ordersData.length - 1].orderDate?.split(',')[0] || '—'}` : "No orders yet";
 
-        function renderActivityChart() {
-            const ctx = document.getElementById('activityChart');
-            if (!ctx) return;
+        // Badges
+        document.getElementById("searcherBadge").textContent = `🔍 ${userHistory.length} Searches`;
+        document.getElementById("saverBadge").textContent = savings > 0 ? `💰 Saved ${fc(savings)}` : "💰 No Savings Yet";
+        document.getElementById("watcherBadge").textContent = `👁️ ${watchlistData.length} Watching`;
 
-            // Compute last 7 days
-            const counts = {};
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                counts[d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' })] = 0;
-            }
-
-            userHistory.forEach(h => {
+        // History list
+        const listEl = document.getElementById("historyList");
+        if (!userHistory.length) {
+            listEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">No searches yet. Start comparing prices!</p>`;
+        } else {
+            listEl.innerHTML = [...userHistory].reverse().slice(0, 20).map(h => {
+                let t = "";
                 try {
-                    const parsedDate = new Date(h.time);
-                    if (!isNaN(parsedDate.getTime())) {
-                        const key = parsedDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' });
-                        if (counts[key] !== undefined) counts[key]++;
-                    } else {
-                        // fallback for old data
-                        const parts = h.time.split('/');
-                        if (parts.length >= 3) {
-                            const d = new Date(`${parts[1]}/${parts[0]}/${parts[2].split(',')[0]}`);
-                            const key = d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' });
-                            if (counts[key] !== undefined) counts[key]++;
-                        }
-                    }
-                } catch(e) {}
-            });
+                    const d = new Date(h.time);
+                    t = isNaN(d.getTime()) ? h.time.split(',')[0] : d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+                } catch { t = h.time?.split(',')[0] || ""; }
+                return `<div class="history-item" onclick="window.location.href='index.html?q=${encodeURIComponent(h.searchQuery)}'">
+                    <div class="history-q"><span>🔍</span>${h.searchQuery}</div>
+                    <div class="history-t">${t}</div>
+                </div>`;
+            }).join("");
+        }
 
+        // Top searched terms
+        const freq = {};
+        userHistory.forEach(h => { const k = h.searchQuery.toLowerCase().trim(); freq[k] = (freq[k] || 0) + 1; });
+        const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        const maxCount = sorted[0]?.[1] || 1;
+        const topEl = document.getElementById("topSearches");
+        if (!sorted.length) {
+            topEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">Search for products to see your top terms.</p>`;
+        } else {
+            topEl.innerHTML = sorted.map(([q, c], i) => `
+                <div class="top-q">
+                    <div class="top-q-rank">#${i + 1}</div>
+                    <div class="top-q-bar-wrap">
+                        <div class="top-q-name">${q.charAt(0).toUpperCase() + q.slice(1)}</div>
+                        <div class="top-q-bar"><div class="top-q-bar-fill" style="width:${(c / maxCount * 100).toFixed(0)}%"></div></div>
+                    </div>
+                    <div class="top-q-count">${c}×</div>
+                </div>`).join("");
+        }
+
+        // Watchlist highlights
+        const wlEl = document.getElementById("wlHighlights");
+        if (!watchlistData.length) {
+            wlEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">No products on watchlist yet.</p>`;
+        } else {
+            const sorted = [...watchlistData].sort((a, b) => {
+                const aDrop = a.previousPrice ? (a.previousPrice - a.currentPrice) / a.previousPrice : 0;
+                const bDrop = b.previousPrice ? (b.previousPrice - b.currentPrice) / b.previousPrice : 0;
+                return bDrop - aDrop;
+            });
+            wlEl.innerHTML = sorted.map(item => {
+                const hasDrop = item.previousPrice && item.currentPrice < item.previousPrice;
+                const pct = hasDrop ? ((item.previousPrice - item.currentPrice) / item.previousPrice * 100).toFixed(1) : null;
+                return `<div class="wl-item">
+                    <img class="wl-img" src="${item.product?.image || ''}" onerror="this.style.display='none'" alt="">
+                    <div class="wl-info">
+                        <div class="wl-title" title="${item.product?.title}">${item.product?.title || 'Product'}</div>
+                        <div class="wl-price">${fc(item.currentPrice)}</div>
+                    </div>
+                    ${hasDrop ? `<div class="wl-drop">↓ ${pct}%</div>` : ''}
+                </div>`;
+            }).join("");
+        }
+
+        // Activity chart
+        const counts = {};
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            counts[d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })] = 0;
+        }
+        userHistory.forEach(h => {
+            try {
+                const d = new Date(h.time);
+                const k = isNaN(d.getTime()) ? null : d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+                if (k && counts[k] !== undefined) counts[k]++;
+            } catch {}
+        });
+
+        const ctx = document.getElementById("activityChart");
+        if (ctx) {
+            const vals = Object.values(counts);
+            const maxVal = Math.max(...vals, 1);
+            const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 280);
+            grad.addColorStop(0, "rgba(99,102,241,0.5)");
+            grad.addColorStop(1, "rgba(99,102,241,0.0)");
             new Chart(ctx, {
-                type: 'bar',
+                type: "bar",
                 data: {
                     labels: Object.keys(counts),
                     datasets: [{
-                        label: 'Searches',
-                        data: Object.values(counts),
-                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                        borderRadius: 6,
+                        label: "Searches", data: vals,
+                        backgroundColor: vals.map(v => v === maxVal ? "rgba(139,92,246,0.9)" : "rgba(99,102,241,0.6)"),
+                        borderRadius: 8, borderSkipped: false
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: c => `${c.raw} search${c.raw !== 1 ? 'es' : ''}` } }
+                    },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
-                        x: { grid: { display: false } }
+                        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#64748b", stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: "#64748b" } }
                     }
                 }
             });
         }
-    </script>
+    }
+</script>
 </body>
 </html>
