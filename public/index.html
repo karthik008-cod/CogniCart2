@@ -248,16 +248,19 @@
       const lastSearch  = localStorage.getItem("lastSearch");
       const amazonCache = safeParseJSON(localStorage.getItem("amazonData"));
       const fkCache     = safeParseJSON(localStorage.getItem("flipkartData"));
+      const googleCache = safeParseJSON(localStorage.getItem("googleData"));
 
-      if (lastSearch && (amazonCache.length || fkCache.length)) {
+      if (lastSearch && (amazonCache.length || fkCache.length || googleCache.length)) {
         document.getElementById("item").value = lastSearch;
         document.getElementById("storesSection").style.display = "flex";
 
         amazonData   = amazonCache;
         flipkartData = fkCache;
+        googleData   = googleCache;
 
         render("amazon",   amazonData);
         render("flipkart", flipkartData);
+        render("google",   googleData);
 
         // Restore AI recommendation from sessionStorage (survives page refresh)
         const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);

@@ -333,21 +333,27 @@ async function scrapeGoogle(query) {
       });
 
       if (data.shopping_results?.length) {
-        return data.shopping_results.slice(0, 4).map((item) => {
-          const rawPrice = item.price || item.extracted_price || "";
-          const price = rawPrice.toString().replace(/[^\d]/g, "") ||
-                        String(Math.floor(Math.random() * 20000) + 8000);
-          const title = (item.title || "").trim();
-          const link = item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
-          return {
-            title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
-            price,
-            rating: item.rating ? String(item.rating) : "4.5",
-            image:  item.thumbnail || FALLBACK_IMG,
-            link:   link,
-            store:  item.source   || "Google Shopping",
-          };
+        const filtered = data.shopping_results.filter(item => {
+          const store = (item.source || "").toLowerCase();
+          return !store.includes("amazon") && !store.includes("flipkart");
         });
+        if (filtered.length) {
+          return filtered.slice(0, 4).map((item) => {
+            const rawPrice = item.price || item.extracted_price || "";
+            const price = rawPrice.toString().replace(/[^\d]/g, "") ||
+                          String(Math.floor(Math.random() * 20000) + 8000);
+            const title = (item.title || "").trim();
+            const link = item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
+            return {
+              title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
+              price,
+              rating: item.rating ? String(item.rating) : "4.5",
+              image:  item.thumbnail || FALLBACK_IMG,
+              link:   link,
+              store:  item.source   || "Google Shopping",
+            };
+          });
+        }
       }
     } catch (e) {
       console.error("SerpAPI shopping failed:", e.message);
@@ -374,21 +380,27 @@ async function scrapeGoogle(query) {
       // ScraperAPI structured endpoint returns { shopping_results: [...] }
       const items = data.shopping_results || data.results || [];
       if (items.length) {
-        return items.slice(0, 4).map((item) => {
-          const rawPrice = item.price || item.extracted_price || "";
-          const price = rawPrice.toString().replace(/[^\d]/g, "") ||
-                        String(Math.floor(Math.random() * 20000) + 8000);
-          const title = (item.title || item.name || "").trim();
-          const link = item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
-          return {
-            title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
-            price,
-            rating: item.rating ? String(item.rating) : "4.5",
-            image:  item.thumbnail || item.image || FALLBACK_IMG,
-            link:   link,
-            store:  item.source || item.merchant || "Web Store",
-          };
+        const filtered = items.filter(item => {
+          const store = (item.source || item.merchant || "").toLowerCase();
+          return !store.includes("amazon") && !store.includes("flipkart");
         });
+        if (filtered.length) {
+          return filtered.slice(0, 4).map((item) => {
+            const rawPrice = item.price || item.extracted_price || "";
+            const price = rawPrice.toString().replace(/[^\d]/g, "") ||
+                          String(Math.floor(Math.random() * 20000) + 8000);
+            const title = (item.title || item.name || "").trim();
+            const link = item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
+            return {
+              title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
+              price,
+              rating: item.rating ? String(item.rating) : "4.5",
+              image:  item.thumbnail || item.image || FALLBACK_IMG,
+              link:   link,
+              store:  item.source || item.merchant || "Web Store",
+            };
+          });
+        }
       }
     } catch (e) {
       console.error("ScraperAPI structured shopping failed:", e.message);
@@ -406,7 +418,12 @@ async function scrapeGoogle(query) {
       const results = [];
 
       $(".sh-dgr__gr-auto, .sh-dlr__list-result, .KZmu8e, .u30d4, [data-docid]").each((_, el) => {
+        const store =
+          $(el).find(".aULzUe, .E5ocAb, .IuHnof, .NbV1uc").first().text().trim() || "Google Shopping";
+        
+        if (store.toLowerCase().includes("amazon") || store.toLowerCase().includes("flipkart")) return;
         if (results.length >= 4) return false;
+
         const title =
           $(el).find(".Xjkr3b, .tAxDx, h3, .rgHvZc").first().text().trim() || "";
         const priceRaw =
@@ -414,8 +431,6 @@ async function scrapeGoogle(query) {
         const price = priceRaw.replace(/[^\d]/g, "");
         const image =
           $(el).find("img").attr("src") || $(el).find("img").attr("data-src") || FALLBACK_IMG;
-        const store =
-          $(el).find(".aULzUe, .E5ocAb, .IuHnof, .NbV1uc").first().text().trim() || "Google Shopping";
         const linkElem = $(el).find("a").attr("href");
         const link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.google.com${linkElem}`) : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
 
@@ -667,12 +682,18 @@ router.post("/ai-recommendation", async (req, res) => {
       `this category because they specialize in it and offer better variety and value. `;
   }
 
+  let userPreferenceGuidance = "";
+  if (query) {
+    userPreferenceGuidance = `CRITICAL RULE: The user searched for "${query}". If this query mentions a specific company, brand, or website (e.g., Milton, Ajio, Nykaa, etc.), YOU MUST highly recommend the product from that specific website or brand if it is available in the list. `;
+  }
+
   const prompt =
     `You are a smart shopping AI for 'Cognitive Cart', an Indian price-comparison app. ` +
+    userPreferenceGuidance +
     platformGuidance +
     `Analyze these products and recommend the single best option: ${JSON.stringify(productSummary)}. ` +
     `Consider: price (lower is better), rating (higher is better), and which store is best ` +
-    `suited for this product category. ` +
+    `suited for this product category or matches the user's explicit preference. ` +
     `Reply in 3 plain-text sentences max. Mention the product name, why it's the best pick, ` +
     `and which store/platform to buy from. No markdown, no asterisks, no bullet points.`;
 
