@@ -238,10 +238,9 @@
 
 <nav>
     <h1>🛒 Cognitive <span>Cart</span></h1>
-    <div class="nav-links">
+    <div class="nav-links" id="navLinks">
         <a href="index.html">Search</a>
         <a href="watchlist.html" class="active">📊 Watchlist</a>
-        <a href="profile.html">👤 Profile</a>
         <a href="#" id="logoutBtn">Logout</a>
     </div>
 </nav>
@@ -320,6 +319,19 @@
         if (!user) {
             window.location.href = "index.html";
             return;
+        }
+
+        // Inject Profile Pill if not present
+        const nav = document.getElementById("navLinks");
+        if (!document.getElementById("profilePill")) {
+            const profileBtn = document.createElement("a");
+            profileBtn.id = "profilePill";
+            profileBtn.href = "profile.html";
+            profileBtn.innerHTML = `👤 ${user}`;
+            profileBtn.style.cssText = "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 14px; margin-right: 10px; transition: all 0.2s; color: var(--text); display: inline-flex; align-items: center; text-decoration: none;";
+            profileBtn.onmouseover = () => profileBtn.style.background = 'rgba(255,255,255,0.1)';
+            profileBtn.onmouseout = () => profileBtn.style.background = 'rgba(255,255,255,0.05)';
+            nav.insertBefore(profileBtn, document.getElementById("logoutBtn"));
         }
 
         document.getElementById("loadingState").style.display = "block";
@@ -443,7 +455,7 @@
             history.unshift({ ...history[0], timestamp: new Date(new Date(history[0].timestamp).getTime() - 86400000).toISOString() });
         }
 
-        const labels = history.map(h => new Date(h.timestamp).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' }));
+        const labels = history.map(h => new Date(h.timestamp).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' }));
         const data = history.map(h => h.price);
 
         // Calculate gradient

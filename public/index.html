@@ -657,7 +657,9 @@
 
     function showUser(username) {
       document.getElementById("userControls").innerHTML = `
-        <span class="welcome-text">👤 ${username}</span>
+        <button onclick="window.location.href='profile.html'" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;color:var(--text);display:flex;align-items:center;gap:6px;transition:all 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+          👤 ${username}
+        </button>
         <button onclick="showSection('orders')" style="background:transparent;border:1px solid var(--primary)">My Orders</button>
         <button onclick="showSection('history')" style="background:transparent;border:1px solid var(--primary)">History</button>
         <button onclick="window.location.href='watchlist.html'" style="background:transparent;border:1px solid var(--primary)">📊 Watchlist</button>

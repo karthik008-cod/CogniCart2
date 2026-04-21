@@ -95,10 +95,9 @@
 
     <nav class="top-bar">
         <h2 onclick="window.location.href='index.html'">🛒 Cognitive Cart</h2>
-        <div class="nav-links">
+        <div class="nav-links" id="navLinks">
             <a href="index.html">Search</a>
             <a href="watchlist.html">📊 Watchlist</a>
-            <a href="profile.html" class="active">👤 Profile</a>
             <a href="#" id="logoutBtn">Logout</a>
         </div>
     </nav>
@@ -126,6 +125,16 @@
             const user = localStorage.getItem("loggedUser");
             if (!user) return;
 
+            // Inject Profile Pill
+            const nav = document.getElementById("navLinks");
+            const profileBtn = document.createElement("a");
+            profileBtn.href = "profile.html";
+            profileBtn.innerHTML = `👤 ${user}`;
+            profileBtn.style.cssText = "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 14px; margin-right: 10px; transition: all 0.2s; color: var(--text); display: inline-flex; align-items: center; text-decoration: none;";
+            profileBtn.onmouseover = () => profileBtn.style.background = 'rgba(255,255,255,0.1)';
+            profileBtn.onmouseout = () => profileBtn.style.background = 'rgba(255,255,255,0.05)';
+            nav.insertBefore(profileBtn, document.getElementById("logoutBtn"));
+
             document.getElementById("mainContainer").innerHTML = `
                 <div class="header">
                     <h1>Welcome back, ${user.split('@')[0]} 👋</h1>
@@ -142,8 +151,12 @@
                         <div class="stat-label">Items Watched</div>
                     </div>
                     <div class="stat-card">
+                        <div class="stat-value" id="statTotalValue" style="color: #f472b6">₹0</div>
+                        <div class="stat-label">Total Watchlist Value</div>
+                    </div>
+                    <div class="stat-card">
                         <div class="stat-value" id="statSavings" style="color: var(--success)">₹0</div>
-                        <div class="stat-label">Total Savings (Price Drops)</div>
+                        <div class="stat-label">Savings (Price Drops)</div>
                     </div>
                 </div>
 
@@ -192,24 +205,38 @@
             document.getElementById("statWatchlist").innerText = watchlistData.length;
 
             let savings = 0;
+            let totalValue = 0;
             watchlistData.forEach(item => {
                 if (item.previousPrice && item.currentPrice < item.previousPrice) {
                     savings += (item.previousPrice - item.currentPrice);
                 }
+                totalValue += (item.currentPrice || 0);
             });
-            document.getElementById("statSavings").innerText = `₹${savings.toLocaleString()}`;
+            document.getElementById("statSavings").innerText = `₹${savings.toLocaleString("en-IN")}`;
+            document.getElementById("statTotalValue").innerText = `₹${totalValue.toLocaleString("en-IN")}`;
 
             // History List
             const listEl = document.getElementById("historyList");
             if (!userHistory.length) {
                 listEl.innerHTML = `<p style="color:var(--text-muted)">No recent searches.</p>`;
             } else {
-                listEl.innerHTML = [...userHistory].reverse().map(h => `
+                listEl.innerHTML = [...userHistory].reverse().map(h => {
+                    let timeStr = "";
+                    try {
+                        const parsedDate = new Date(h.time);
+                        if (!isNaN(parsedDate.getTime())) {
+                            timeStr = parsedDate.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: '2-digit', minute: '2-digit', hour12: true });
+                            timeStr = parsedDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' }) + ", " + timeStr;
+                        } else {
+                            timeStr = h.time.split(',')[0];
+                        }
+                    } catch(e) { timeStr = h.time.split(',')[0]; }
+                    return `
                     <div class="history-item">
                         <div class="history-query">${h.searchQuery}</div>
-                        <div class="history-time">${h.time.split(',')[0]}</div>
-                    </div>
-                `).join("");
+                        <div class="history-time">${timeStr}</div>
+                    </div>`;
+                }).join("");
             }
 
             // Activity Chart (searches over last 7 days)
@@ -225,17 +252,23 @@
             for (let i = 6; i >= 0; i--) {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
-                counts[d.toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })] = 0;
+                counts[d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' })] = 0;
             }
 
             userHistory.forEach(h => {
                 try {
-                    // Try to parse the localized date string safely
-                    const parts = h.time.split('/');
-                    if (parts.length >= 3) {
-                        const d = new Date(`${parts[1]}/${parts[0]}/${parts[2].split(',')[0]}`);
-                        const key = d.toLocaleDateString("en-IN", { day: 'numeric', month: 'short' });
+                    const parsedDate = new Date(h.time);
+                    if (!isNaN(parsedDate.getTime())) {
+                        const key = parsedDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' });
                         if (counts[key] !== undefined) counts[key]++;
+                    } else {
+                        // fallback for old data
+                        const parts = h.time.split('/');
+                        if (parts.length >= 3) {
+                            const d = new Date(`${parts[1]}/${parts[0]}/${parts[2].split(',')[0]}`);
+                            const key = d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' });
+                            if (counts[key] !== undefined) counts[key]++;
+                        }
                     }
                 } catch(e) {}
             });

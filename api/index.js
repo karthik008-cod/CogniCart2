@@ -613,7 +613,7 @@ router.post("/history", async (req, res) => {
       {
         $push: {
           history: {
-            $each: [{ searchQuery, time: new Date().toLocaleString() }],
+            $each: [{ searchQuery, time: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) }],
             $slice: -50,
           },
         },
