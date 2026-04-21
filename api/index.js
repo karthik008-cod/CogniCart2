@@ -1,14 +1,22 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const dns = require("dns");
 const { MongoClient } = require("mongodb");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
+// Full Express app — required for Vercel serverless (module.exports must be a handler function)
+const app = express();
+app.use(cors());
+app.use(express.json());
+// Serve static files from /public
+app.use(express.static(path.join(__dirname, "../public")));
+
+// Router for all /api/* routes
 const router = express.Router();
-router.use(cors());
-router.use(express.json());
+app.use("/api", router);
 
 // In-memory OTP store for development (no DB required for auth)
 let otpStore = {};
@@ -17,7 +25,7 @@ let otpStore = {};
 
 const mongoUri = process.env.MONGODB_URI;
 if (!mongoUri) {
-  throw new Error("MONGODB_URI is required in environment variables.");
+  console.warn("WARNING: MONGODB_URI is not set. DB-dependent routes will fail.");
 }
 
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
@@ -581,36 +589,85 @@ router.post("/history", async (req, res) => {
 
 // ─── 7. AI ENDPOINTS (POWERED BY GROQ & LLAMA 3) ─────────────────────────────
 
+// ─── CATEGORY CLASSIFIER ─────────────────────────────────────────────────────
+// Detects fashion/apparel queries so the AI can recommend niche platforms
+// like Meesho or Myntra that dominate these categories in India.
+const FASHION_KEYWORDS = [
+  "kurta","kurti","saree","sari","lehenga","salwar","dupatta","churidar",
+  "anarkali","sharara","palazzo","ethnic","traditional","dress","dresses",
+  "gown","frock","top","tops","blouse","shirt","shirts","t-shirt","tshirt",
+  "jeans","trouser","trousers","skirt","shorts","lingerie","innerwear",
+  "jacket","hoodie","sweater","sweatshirt","cardigan","coat","blazer",
+  "shoes","sandals","heels","footwear","sneakers","boots","chappal","slipper",
+  "handbag","bag","purse","clutch","wallet","belt","accessories","jewellery",
+  "jewelry","necklace","earrings","bangles","watch","watches","sunglasses",
+  "fabric","cloth","clothing","fashion","western","casual","formal","party wear",
+  "meesho","myntra","ethnic wear","indo-western","cotton","silk","linen",
+  "printed","embroidered","designer","legging","leggings","innerwear",
+];
+
+function detectFashionCategory(query) {
+  const q = query.toLowerCase();
+  return FASHION_KEYWORDS.some(kw => q.includes(kw));
+}
+
 router.post("/ai-recommendation", async (req, res) => {
-  const { products } = req.body;
+  const { products, query } = req.body;
   if (!products?.length)
     return res.json({ explanation: "No products to analyze." });
 
-  const cacheKey = hashProducts(products);
+  const cacheKey = hashProducts(products) + (query || "");
   const cached = getCached(aiCache, cacheKey);
   if (cached) return res.json({ explanation: cached, fromCache: true });
 
-  try {
-    const prompt =
-      `You are a deal-finding AI for 'Cognitive Cart'. ` +
-      `From these products: ${JSON.stringify(products)}, ` +
-      `pick the best value (balance of lowest price, highest rating, fastest delivery). ` +
-      `Reply in exactly 2 short plain-text sentences. No markdown, no asterisks.`;
+  const isFashion = detectFashionCategory(query || "");
 
+  // Build a structured summary for the AI to reason about
+  const productSummary = products.slice(0, 12).map((p, i) => ({
+    id: i + 1,
+    title: p.title?.substring(0, 60),
+    price: `₹${p.price}`,
+    rating: p.rating || "N/A",
+    store: p.store || "Amazon/Flipkart",
+  }));
+
+  let platformGuidance = "";
+  if (isFashion) {
+    platformGuidance =
+      `IMPORTANT CONTEXT: This is a fashion/apparel/accessories search. ` +
+      `In India, platforms like Meesho and Myntra often have a much wider range ` +
+      `of ethnic wear, dresses, and fashion items at better prices than Amazon or Flipkart. ` +
+      `If any product in the list is sourced from Meesho, Myntra, or similar fashion-first ` +
+      `platforms (shown in the 'store' field), strongly prefer recommending those for ` +
+      `this category because they specialize in it and offer better variety and value. `;
+  }
+
+  const prompt =
+    `You are a smart shopping AI for 'Cognitive Cart', an Indian price-comparison app. ` +
+    platformGuidance +
+    `Analyze these products and recommend the single best option: ${JSON.stringify(productSummary)}. ` +
+    `Consider: price (lower is better), rating (higher is better), and which store is best ` +
+    `suited for this product category. ` +
+    `Reply in 3 plain-text sentences max. Mention the product name, why it's the best pick, ` +
+    `and which store/platform to buy from. No markdown, no asterisks, no bullet points.`;
+
+  try {
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }],
+        max_tokens: 200,
       },
       {
         headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+        timeout: 15000,
       },
     );
 
     const explanation = response.data.choices[0].message.content.trim();
     setCache(aiCache, cacheKey, explanation, AI_TTL);
-    res.json({ explanation });
+    res.json({ explanation, isFashion });
   } catch (err) {
     console.error("Groq AI error:", err?.response?.data || err.message);
     res.json({ explanation: "AI recommendation temporarily unavailable." });
@@ -923,7 +980,7 @@ async function monitorPricesScheduled() {
           // Only send if no recent notification (within 24 hours)
           const shouldNotify =
             !lastNotification ||
-            Date.now() - lastNotification.timestamp > 24 * 60 * 60 * 1000;
+            Date.now() - new Date(lastNotification.timestamp).getTime() > 24 * 60 * 60 * 1000;
 
           if (shouldNotify) {
             const emailSent = await sendPriceDropEmail(
@@ -940,24 +997,27 @@ async function monitorPricesScheduled() {
           }
         }
 
-        // Update watchlist entry with new price history and notification
+        // Build the update operation — $set and $push must be at top level
+        const updateOp = {
+          $set: {
+            priceHistory: updatedHistory,
+            lastChecked: new Date(),
+          },
+        };
+
+        if (dropDetails.hasPriceDrop) {
+          updateOp.$push = {
+            priceDropNotifications: {
+              dropAmount: dropDetails.dropAmount,
+              dropPercentage: dropDetails.dropPercentage,
+              timestamp: new Date(),
+            },
+          };
+        }
+
         await watchlistCollection.updateOne(
           { _id: watchlistEntry._id },
-          {
-            $set: {
-              priceHistory: updatedHistory,
-              lastChecked: new Date(),
-              ...(dropDetails.hasPriceDrop && {
-                $push: {
-                  priceDropNotifications: {
-                    dropAmount: dropDetails.dropAmount,
-                    dropPercentage: dropDetails.dropPercentage,
-                    timestamp: new Date(),
-                  },
-                },
-              }),
-            },
-          }
+          updateOp
         );
       } catch (err) {
         console.error(
@@ -971,13 +1031,22 @@ async function monitorPricesScheduled() {
   }
 }
 
-// Start price monitoring every 4 hours (14400000 ms)
-setInterval(monitorPricesScheduled, 4 * 60 * 60 * 1000);
+// ─── PRICE CHECK ENDPOINT (replaces setInterval — use Vercel Cron or manual trigger) ──
+// Add to vercel.json crons: { "path": "/api/check-prices", "schedule": "0 */6 * * *" }
+router.get("/check-prices", async (req, res) => {
+  // Simple auth: optional secret header to prevent public abuse
+  const secret = req.headers["x-cron-secret"] || req.query.secret;
+  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    await monitorPricesScheduled();
+    res.json({ ok: true, message: "Price check completed" });
+  } catch (err) {
+    console.error("[check-prices] Error:", err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
-// Optional: Check prices immediately on server startup
-setTimeout(() => {
-  console.log("[PRICE MONITOR] Starting initial price check...");
-  monitorPricesScheduled();
-}, 5000);
-
-module.exports = router;
+// Export the full app (not just router) so Vercel serverless can call it as a handler
+module.exports = app;

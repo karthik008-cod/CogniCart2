@@ -248,7 +248,10 @@
         // Restore AI recommendation from sessionStorage (survives page refresh)
         const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
         if (cachedAI) {
-          renderAIBox(cachedAI);
+          try {
+            const c = JSON.parse(cachedAI);
+            renderAIBox(c.text || cachedAI, c.isFashion || false);
+          } catch { renderAIBox(cachedAI, false); }
         }
         setTimeout(observeNew, 100);
       }
@@ -419,7 +422,12 @@
       // Check sessionStorage first (survives re-renders within the same tab)
       const sessionCached = sessionStorage.getItem(cacheKey);
       if (sessionCached && query) {
-        renderAIBox(sessionCached);
+        try {
+          const cached = JSON.parse(sessionCached);
+          renderAIBox(cached.text || sessionCached, cached.isFashion || false);
+        } catch {
+          renderAIBox(sessionCached, false);
+        }
         return;
       }
 
@@ -430,23 +438,29 @@
         const res  = await fetch(`${API_BASE}/ai-recommendation`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ products: allProducts }),
+          body:    JSON.stringify({ products: allProducts, query }),
         });
         const data = await res.json();
-        renderAIBox(data.explanation);
+        renderAIBox(data.explanation, data.isFashion);
 
         // Cache for this tab session
-        if (query) sessionStorage.setItem(cacheKey, data.explanation);
+        if (query) sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.explanation, isFashion: data.isFashion }));
       } catch {
         aiBox.innerHTML = `<div class="ai-box">AI recommendation unavailable.</div>`;
       }
     }
 
-    function renderAIBox(explanation) {
+    function renderAIBox(explanation, isFashion) {
       const aiBox = document.getElementById("aiBox");
+      const fashionBadge = isFashion
+        ? `<span style="display:inline-block;background:linear-gradient(135deg,#f97316,#ec4899);
+            color:#fff;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;
+            margin-bottom:10px;letter-spacing:0.5px">👗 Fashion Mode — Meesho &amp; Myntra Prioritized</span><br>`
+        : "";
       aiBox.innerHTML = `
         <div class="ai-box reveal active">
           <h3>🧠 AI Recommendation</h3>
+          ${fashionBadge}
           <p>${explanation}</p>
         </div>`;
     }
@@ -598,7 +612,12 @@
 
         // Restore AI from sessionStorage on home navigation too
         const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
-        if (cachedAI) renderAIBox(cachedAI);
+        if (cachedAI) {
+          try {
+            const c = JSON.parse(cachedAI);
+            renderAIBox(c.text || cachedAI, c.isFashion || false);
+          } catch { renderAIBox(cachedAI, false); }
+        }
       }
     }
 
