@@ -27,7 +27,7 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api", router);
 
 // Fallback: any non-/api route serves the frontend SPA
-app.get("*", (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, "../public", "index.html"));
 });
 
