@@ -1,22 +1,20 @@
+// Load .env for local dev (safe to call multiple times — dotenv deduplicates)
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const dns = require("dns");
 const { MongoClient } = require("mongodb");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
-// Full Express app — required for Vercel serverless (module.exports must be a handler function)
-const app = express();
-app.use(cors());
-app.use(express.json());
-// Serve static files from /public
-app.use(express.static(path.join(__dirname, "../public")));
-
-// Router for all /api/* routes
+// The router handles all /api/* logic.
+// Local: script.js mounts it at app.use('/api', router)
+// Vercel: api/vercel.js wraps it in a full app and exports the handler
 const router = express.Router();
-app.use("/api", router);
+router.use(cors());
+router.use(express.json());
 
 // In-memory OTP store for development (no DB required for auth)
 let otpStore = {};
@@ -30,15 +28,16 @@ if (!mongoUri) {
 
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-const client = new MongoClient(mongoUri, {
+const client = mongoUri ? new MongoClient(mongoUri, {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 10000,
   connectTimeoutMS: 10000,
-});
+}) : null;
 let db;
 
 async function connectDB() {
   if (db) return db;
+  if (!client) throw new Error("MONGODB_URI not configured");
   try {
     await client.connect();
     db = client.db("cognitive_cart");
@@ -1048,5 +1047,6 @@ router.get("/check-prices", async (req, res) => {
   }
 });
 
-// Export the full app (not just router) so Vercel serverless can call it as a handler
-module.exports = app;
+// Export the router so script.js can mount it at /api
+module.exports = router;
+

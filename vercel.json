@@ -2,26 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.js",
+      "src": "api/vercel.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|html))",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/watchlist",
-      "dest": "/public/watchlist.html"
+      "dest": "/api/vercel.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/index.html"
+      "dest": "/api/vercel.js"
     }
   ],
   "crons": [
