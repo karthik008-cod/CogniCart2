@@ -48,6 +48,19 @@
       .chat-header:active {
         cursor: grabbing;
       }
+      .store-link {
+        background: rgba(167, 139, 250, 0.1);
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(167, 139, 250, 0.2);
+        transition: all 0.2s ease;
+      }
+      .store-link:hover {
+        background: rgba(167, 139, 250, 0.25);
+        color: #c4b5fd !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(167, 139, 250, 0.15);
+      }
     </style>
   </head>
   <body>
@@ -155,6 +168,7 @@
     // because Live Server has no backend. We detect that and proxy to port 3000.
     const API_BASE = (() => {
       const port = location.port;
+      if (location.protocol === "file:") return "http://localhost:3000/api";
       if (port === "5500" || port === "5501") {
         // Running on Live Server — backend is on localhost:3000
         return "http://localhost:3000/api";
@@ -389,9 +403,12 @@
         const deliveryHtml = p.deliveryDays
           ? `<p class="delivery">🚚 Delivery: ${p.deliveryDays} day${p.deliveryDays > 1 ? "s" : ""}</p>`
           : `<p class="delivery" style="color:var(--success)">🚚 In Stock</p>`;
-        const storeBadge = p.store
-          ? `<p class="delivery" style="color:#a78bfa;font-size:0.78rem;margin-top:2px">🏪 ${p.store}</p>`
-          : "";
+        const storeName = p.store || (id === "amazon" ? "Amazon" : id === "flipkart" ? "Flipkart" : "Store");
+        const storeLink = p.link || "#";
+        const storeBadge = `<a href="${storeLink}" target="_blank" rel="noopener noreferrer" class="store-link" 
+                               style="color:#a78bfa;font-size:0.8rem;margin-top:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:color 0.2s">
+                              🏪 View on ${storeName}
+                            </a>`;
         return `
           <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay:${index * 0.08}s">
             <img src="${p.image}"

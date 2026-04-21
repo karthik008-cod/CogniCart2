@@ -181,24 +181,33 @@ const FALLBACK_IMG =
 
 function getSmartFallback(query, store) {
   const q = query.charAt(0).toUpperCase() + query.slice(1);
+  const searchLink = store === "Amazon" ? `https://www.amazon.in/s?k=${encodeURIComponent(query)}` : 
+                     store === "Flipkart" ? `https://www.flipkart.com/search?q=${encodeURIComponent(query)}` : 
+                     `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
   return [
     {
       title: `${q} - Premium Edition (${store} Choice)`,
       price: String(Math.floor(Math.random() * 20000) + 15000),
       rating: "4.7",
       image: FALLBACK_IMG,
+      link: searchLink,
+      store: store
     },
     {
       title: `${q} Standard Variant (128GB)`,
       price: String(Math.floor(Math.random() * 10000) + 10000),
       rating: "4.3",
       image: FALLBACK_IMG,
+      link: searchLink,
+      store: store
     },
     {
       title: `${q} Lite - Budget Friendly`,
       price: String(Math.floor(Math.random() * 5000) + 5000),
       rating: "4.0",
       image: FALLBACK_IMG,
+      link: searchLink,
+      store: store
     },
   ];
 }
@@ -227,12 +236,17 @@ async function scrapeAmazon(query) {
           .text()
           .replace(/,/g, "");
         const image = $(el).find("img.s-image").attr("src");
+        const linkElem = $(el).find("h2 a").attr("href");
+        const link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.amazon.in${linkElem}`) : `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
+        
         if (title && price) {
           results.push({
             title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
             price,
             rating: "4.5",
             image: image || FALLBACK_IMG,
+            link: link,
+            store: "Amazon"
           });
         }
       });
@@ -276,12 +290,17 @@ async function scrapeFlipkart(query) {
             }
           });
 
+        const linkElem = $(el).find("a").attr("href");
+        const link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.flipkart.com${linkElem}`) : `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
+
         if (title && price) {
           results.push({
             title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
             price,
             rating: "4.3",
             image: image,
+            link: link,
+            store: "Flipkart"
           });
         }
       });
@@ -315,16 +334,17 @@ async function scrapeGoogle(query) {
 
       if (data.shopping_results?.length) {
         return data.shopping_results.slice(0, 4).map((item) => {
-          // SerpAPI returns prices like "₹75,900" — strip to digits only
           const rawPrice = item.price || item.extracted_price || "";
           const price = rawPrice.toString().replace(/[^\d]/g, "") ||
                         String(Math.floor(Math.random() * 20000) + 8000);
           const title = (item.title || "").trim();
+          const link = item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
           return {
             title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
             price,
             rating: item.rating ? String(item.rating) : "4.5",
             image:  item.thumbnail || FALLBACK_IMG,
+            link:   link,
             store:  item.source   || "Google Shopping",
           };
         });
@@ -359,11 +379,13 @@ async function scrapeGoogle(query) {
           const price = rawPrice.toString().replace(/[^\d]/g, "") ||
                         String(Math.floor(Math.random() * 20000) + 8000);
           const title = (item.title || item.name || "").trim();
+          const link = item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
           return {
             title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
             price,
             rating: item.rating ? String(item.rating) : "4.5",
             image:  item.thumbnail || item.image || FALLBACK_IMG,
+            link:   link,
             store:  item.source || item.merchant || "Web Store",
           };
         });
@@ -394,12 +416,16 @@ async function scrapeGoogle(query) {
           $(el).find("img").attr("src") || $(el).find("img").attr("data-src") || FALLBACK_IMG;
         const store =
           $(el).find(".aULzUe, .E5ocAb, .IuHnof, .NbV1uc").first().text().trim() || "Google Shopping";
+        const linkElem = $(el).find("a").attr("href");
+        const link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.google.com${linkElem}`) : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
+
         if (title && price) {
           results.push({
             title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
             price,
             rating: "4.5",
             image: image.startsWith("http") ? image : FALLBACK_IMG,
+            link: link,
             store,
           });
         }

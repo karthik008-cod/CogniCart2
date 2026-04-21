@@ -272,6 +272,7 @@
     // ── API BASE: auto-detect (no hardcoded localhost!) ──
     const API_BASE = (() => {
         const port = location.port;
+        if (location.protocol === "file:") return "http://localhost:3000/api";
         if (port === "5500" || port === "5501") return "http://localhost:3000/api";
         if (port === "3000") return "http://localhost:3000/api";
         return "/api"; // Vercel or any other host — use relative path
