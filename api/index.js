@@ -204,54 +204,20 @@ router.post("/verify-otp", async (req, res) => {
 
 // ─── 4. SCRAPERS ─────────────────────────────────────────────────────────────
 
-// Upgraded to a sleek tech image instead of the blank white circle
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
 
-function getSmartFallback(query, store) {
-  const q = query.charAt(0).toUpperCase() + query.slice(1);
-  const searchLink = store === "Amazon" ? `https://www.amazon.in/s?k=${encodeURIComponent(query)}` : 
-                     store === "Flipkart" ? `https://www.flipkart.com/search?q=${encodeURIComponent(query)}` : 
-                     `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
-  return [
-    {
-      title: `${q} - Premium Edition (${store} Choice)`,
-      price: String(Math.floor(Math.random() * 20000) + 15000),
-      rating: "4.7",
-      image: FALLBACK_IMG,
-      link: searchLink,
-      store: store
-    },
-    {
-      title: `${q} Standard Variant (128GB)`,
-      price: String(Math.floor(Math.random() * 10000) + 10000),
-      rating: "4.3",
-      image: FALLBACK_IMG,
-      link: searchLink,
-      store: store
-    },
-    {
-      title: `${q} Lite - Budget Friendly`,
-      price: String(Math.floor(Math.random() * 5000) + 5000),
-      rating: "4.0",
-      image: FALLBACK_IMG,
-      link: searchLink,
-      store: store
-    },
-  ];
-}
+
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
 
 // 1. AMAZON (Powered by ScraperAPI)
 async function scrapeAmazon(query) {
   try {
     const apiKey = process.env.SCRAPER_API_KEY;
-    if (!apiKey) return getSmartFallback(query, "Amazon");
+    if (!apiKey) return [];
 
     const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
-    // URL updated to ScraperAPI
     const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
-    const { data } = await axios.get(proxyUrl, { timeout: 15000 });
+    const { data } = await axios.get(proxyUrl, { timeout: 25000 });
     const $ = cheerio.load(data);
     const results = [];
 
@@ -279,10 +245,10 @@ async function scrapeAmazon(query) {
           });
         }
       });
-    return results.length ? results : getSmartFallback(query, "Amazon");
+    return results;
   } catch (e) {
     console.error("Amazon scrape failed:", e.message);
-    return getSmartFallback(query, "Amazon");
+    return [];
   }
 }
 
@@ -290,13 +256,12 @@ async function scrapeAmazon(query) {
 async function scrapeFlipkart(query) {
   try {
     const apiKey = process.env.SCRAPER_API_KEY;
-    if (!apiKey) return getSmartFallback(query, "Flipkart");
+    if (!apiKey) return [];
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
-    // URL updated to ScraperAPI
     const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
-    const { data } = await axios.get(proxyUrl, { timeout: 9000 });
+    const { data } = await axios.get(proxyUrl, { timeout: 25000 });
     const $ = cheerio.load(data);
     const results = [];
 
@@ -333,10 +298,10 @@ async function scrapeFlipkart(query) {
           });
         }
       });
-    return results.length ? results : getSmartFallback(query, "Flipkart");
+    return results;
   } catch (e) {
     console.error("Flipkart scrape failed:", e.message);
-    return getSmartFallback(query, "Flipkart");
+    return [];
   }
 }
 
@@ -481,59 +446,45 @@ async function scrapeGoogle(query) {
     }
   }
 
-  // ── All strategies failed — return smart fallback ────────────────────────
-  console.warn("All Google Shopping strategies failed. Using fallback for:", query);
-  return getSmartFallback(query, "Web");
+  console.warn("All Google Shopping strategies failed.");
+  return [];
 }
-// ─── 5. SEARCH ENDPOINT ──────────────────────────────────────────────────────
-
-router.get("/search", async (req, res) => {
+router.get("/search/:store", async (req, res) => {
+  const store = req.params.store.toLowerCase();
   const query = (req.query.q || "").trim().toLowerCase();
   if (!query) return res.status(400).json({ error: "Query required" });
 
-  // 1. Serve from cache if fresh
-  const cached = getCached(searchCache, query);
-  if (cached) {
-    return res.json({ ...cached, fromCache: true });
-  }
+  const cacheKey = `${store}_${query}`;
+  const cached = getCached(searchCache, cacheKey);
+  if (cached) return res.json({ data: cached, fromCache: true });
 
-  // 2. Deduplicate concurrent identical requests
-  if (inflightSearches.has(query)) {
+  if (inflightSearches.has(cacheKey)) {
     try {
-      const result = await inflightSearches.get(query);
-      return res.json(result);
+      const result = await inflightSearches.get(cacheKey);
+      return res.json({ data: result });
     } catch {
       return res.status(500).json({ error: "Search failed" });
     }
   }
 
-  // 3. Run both scrapers in parallel (already was parallel – keep this)
-  // 3. Run all THREE scrapers in parallel
-  const searchPromise = Promise.all([
-    scrapeAmazon(query),
-    scrapeFlipkart(query),
-    scrapeGoogle(query),
-  ])
-    .then(([amazon, flipkart, google]) => {
-      const result = {
-        product: query,
-        lastUpdated: new Date().toLocaleString(),
-        amazon,
-        flipkart,
-        google, // Send the new data to the frontend
-      };
-      setCache(searchCache, query, result, SEARCH_TTL);
-      return result;
-    })
-    .finally(() => inflightSearches.delete(query));
+  let scrapePromise;
+  if (store === "amazon") scrapePromise = scrapeAmazon(query);
+  else if (store === "flipkart") scrapePromise = scrapeFlipkart(query);
+  else if (store === "google") scrapePromise = scrapeGoogle(query);
+  else return res.status(400).json({ error: "Invalid store" });
 
-  inflightSearches.set(query, searchPromise);
+  const promise = scrapePromise.then(result => {
+    setCache(searchCache, cacheKey, result, SEARCH_TTL);
+    return result;
+  }).finally(() => inflightSearches.delete(cacheKey));
+
+  inflightSearches.set(cacheKey, promise);
 
   try {
-    const result = await searchPromise;
-    res.json(result);
+    const result = await promise;
+    res.json({ data: result });
   } catch (err) {
-    console.error("Search error:", err);
+    console.error(`${store} search error:`, err);
     res.status(500).json({ error: "Search failed" });
   }
 });
@@ -705,7 +656,7 @@ const FASHION_KEYWORDS = [
 
 function detectFashionCategory(query) {
   const q = query.toLowerCase();
-  return FASHION_KEYWORDS.some(kw => q.includes(kw));
+  return FASHION_KEYWORDS.some(kw => new RegExp(`\\b${kw}\\b`).test(q));
 }
 
 router.post("/ai-recommendation", async (req, res) => {

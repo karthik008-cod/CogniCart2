@@ -63,6 +63,7 @@
       }
       .ai-highlight {
         border: 2px solid transparent !important;
+        border-radius: var(--r-lg) !important;
         background-image: linear-gradient(var(--bg-raised), var(--bg-raised)), linear-gradient(135deg, #f59e0b, #ec4899) !important;
         background-origin: border-box !important;
         background-clip: padding-box, border-box !important;
@@ -431,49 +432,43 @@
       aiBox.classList.add("active");
 
       try {
-        const res  = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
+        // Reset data
+        amazonData = [];
+        flipkartData = [];
+        googleData = [];
 
-        if (data.error) {
-          // FIX: BEFORE — localStorage was already overwritten with error data by now.
-          // AFTER  — we only update localStorage when data is valid (see below).
-          const cachedAmazon = safeParseJSON(localStorage.getItem("amazonData"));
-          const cachedFk     = safeParseJSON(localStorage.getItem("flipkartData"));
-
-          if (cachedAmazon.length || cachedFk.length) {
-            document.getElementById("time").innerText = "⚡ Showing last saved results";
-            amazonData   = cachedAmazon;
-            flipkartData = cachedFk;
-            applyFilter(currentFilter, document.querySelector('.chip.active'));
-          } else {
-            document.getElementById("amazon").innerHTML   = `<p style="color:red">${data.error}</p>`;
-            document.getElementById("flipkart").innerHTML = `<p style="color:red">${data.error}</p>`;
+        const fetchStore = async (store) => {
+          try {
+            const res = await fetch(`${API_BASE}/search/${store}?q=${encodeURIComponent(q)}`);
+            const result = await res.json();
+            if (result.error) throw new Error(result.error);
+            return result.data || [];
+          } catch (e) {
+            console.error(store, "failed", e);
+            document.getElementById(store).innerHTML = `<p style="color:red">Failed to load ${store} results.</p>`;
+            return [];
           }
-          return;
-        }
+        };
 
-        // Only write to localStorage after confirming data is valid
-        localStorage.setItem("lastSearch",   q);
-        localStorage.setItem("amazonData",   JSON.stringify(data.amazon   || []));
-        localStorage.setItem("flipkartData", JSON.stringify(data.flipkart || []));
-        localStorage.setItem("googleData",   JSON.stringify(data.google   || []));
+        const p1 = fetchStore("amazon").then(data => {
+          amazonData = data;
+          localStorage.setItem("amazonData", JSON.stringify(data));
+          applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'), "amazon");
+        });
 
-        amazonData   = data.amazon   || [];
-        flipkartData = data.flipkart || [];
-        googleData   = data.google   || [];
+        const p2 = fetchStore("flipkart").then(data => {
+          flipkartData = data;
+          localStorage.setItem("flipkartData", JSON.stringify(data));
+          applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'), "flipkart");
+        });
 
-        // Apply any active filter automatically
-        applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'));
-        getAIRecommendation(q, [...amazonData, ...flipkartData, ...googleData]);
-        
-        // FIX: Render products immediately, then fire AI in the background.
-        // BEFORE: await getAIRecommendation() — products only appeared AFTER AI was done.
-        // AFTER:  products render instantly, AI box updates asynchronously.
-        render("amazon",   amazonData);
-        render("flipkart", flipkartData);
-        render("google",   googleData);
+        const p3 = fetchStore("google").then(data => {
+          googleData = data;
+          localStorage.setItem("googleData", JSON.stringify(data));
+          applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'), "google");
+        });
 
-        // Log to history (fire-and-forget, don't await)
+        // Log to history
         const loggedUser = localStorage.getItem("loggedUser");
         if (loggedUser) {
           fetch(`${API_BASE}/history`, {
@@ -483,14 +478,14 @@
           }).catch(() => {});
         }
 
-        // AI call is now non-blocking — starts after products are already on screen
-        getAIRecommendation(q, [...amazonData, ...flipkartData, ...googleData]);
+        // Wait for all to finish, then save last search & trigger AI
+        Promise.allSettled([p1, p2, p3]).then(() => {
+          localStorage.setItem("lastSearch", q);
+          getAIRecommendation(q, [...amazonData, ...flipkartData, ...googleData]);
+        });
 
       } catch (err) {
         console.error("Search error:", err);
-        document.getElementById("amazon").innerHTML   = "<p>Failed to connect to server.</p>";
-        document.getElementById("flipkart").innerHTML = "<p>Failed to connect to server.</p>";
-        aiBox.innerHTML = "";
       } finally {
         isSearching = false;
       }
