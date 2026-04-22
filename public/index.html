@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Cognitive Cart</title>
+    <title>Cogni Cart</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="style.css" />
     <style>
@@ -108,7 +108,7 @@
     <div id="toast-container"></div>
 
     <div class="top-bar">
-      <h2 onclick="goHome()" style="cursor:pointer">🛒 Cognitive Cart</h2>
+      <h2 onclick="goHome()" style="cursor:pointer">🛒 Cogni Cart</h2>
       <div class="user-controls" id="userControls">
         <button onclick="openAuthModal(false)">Login / Sign Up</button>
       </div>
@@ -265,11 +265,11 @@
       </div>
     </div>
 
-    <div id="chatToggle" title="Chat with Cognitive Bot">🤖</div>
+    <div id="chatToggle" title="Chat with Cogni Bot">🤖</div>
     <div id="chatBox" class="chat-hidden">
       <div class="chat-resize-handle" id="chatResizeHandle" title="Drag to resize"></div>
       <div class="chat-header">
-        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem">🤖</span> Cognitive Bot</span>
+        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem">🤖</span> Cogni Bot</span>
         <span class="close-btn" id="closeChat">✖</span>
       </div>
       <div id="chatMessages" class="chat-messages"></div>
@@ -280,7 +280,7 @@
         <button onclick="injectSuggestion('Tip to save money shopping online')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">💡 Savings tip</button>
       </div>
       <div class="chat-input">
-        <input id="chatInput" placeholder="Ask Cognitive Bot…" />
+        <input id="chatInput" placeholder="Ask Cogni Bot…" />
         <button id="voiceBtn" title="Voice Input">🎙</button>
         <button id="sendBtn">Send</button>
       </div>
@@ -1341,7 +1341,7 @@
         chatToggle.style.transform = "scale(0)";
         // Show welcome message once
         if (!messagesDiv.children.length) {
-          addMessage("bot", "👋 Hey! I'm **Cognitive Bot**, your intelligent shopping assistant. I can analyze the search results on screen, recommend the best deal, compare platforms, and answer your shopping questions!");
+          addMessage("bot", "👋 Hey! I'm **Cogni Bot**, your intelligent shopping assistant. I can analyze the search results on screen, recommend the best deal, compare platforms, and answer your shopping questions!");
         }
       });
       closeBtn.addEventListener("click", () => {
