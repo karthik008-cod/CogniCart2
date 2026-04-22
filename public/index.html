@@ -63,19 +63,16 @@
       }
       .ai-highlight {
         border: 2px solid transparent !important;
-        border-radius: var(--r-lg) !important;
         background-image: linear-gradient(var(--bg-raised), var(--bg-raised)), linear-gradient(135deg, #f59e0b, #ec4899) !important;
         background-origin: border-box !important;
         background-clip: padding-box, border-box !important;
         box-shadow: 0 8px 30px rgba(245, 158, 11, 0.2) !important;
         animation: aiGlow 2s infinite alternate;
         position: relative;
-        /* allow badge to show outside */
-        overflow: visible !important;
       }
       .ai-badge {
         position: absolute;
-        top: -12px;
+        top: 10px;
         left: 50%;
         transform: translateX(-50%);
         background: linear-gradient(135deg, #f59e0b, #ec4899);
@@ -432,43 +429,51 @@
       aiBox.classList.add("active");
 
       try {
-        // Reset data
         amazonData = [];
         flipkartData = [];
         googleData = [];
 
-        const fetchStore = async (store) => {
-          try {
-            const res = await fetch(`${API_BASE}/search/${store}?q=${encodeURIComponent(q)}`);
-            const result = await res.json();
-            if (result.error) throw new Error(result.error);
-            return result.data || [];
-          } catch (e) {
-            console.error(store, "failed", e);
-            document.getElementById(store).innerHTML = `<p style="color:red">Failed to load ${store} results.</p>`;
-            return [];
-          }
-        };
+        const stores = ["amazon", "flipkart", "google"];
+        
+        const fetchPromises = stores.map(store => 
+          fetch(`${API_BASE}/search/${store}?q=${encodeURIComponent(q)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.error || !data.data || data.data.length === 0) {
+                document.getElementById(store).innerHTML = "<p>No results found</p>";
+                return [];
+              }
+              
+              const products = data.data;
+              if (store === "amazon") amazonData = products;
+              if (store === "flipkart") flipkartData = products;
+              if (store === "google") googleData = products;
 
-        const p1 = fetchStore("amazon").then(data => {
-          amazonData = data;
-          localStorage.setItem("amazonData", JSON.stringify(data));
-          applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'), "amazon");
-        });
+              // Filter instantly based on current active filter
+              let filtered = products;
+              if (currentFilter === 'under1000') filtered = filtered.filter(p => +p.price < 1000);
+              if (currentFilter === 'topRated') filtered = filtered.filter(p => (+p.rating||0) >= 4.5);
+              
+              // Sort if needed
+              if (currentSort) {
+                filtered.sort((x, y) => {
+                  if (currentSort === "price")  return (+x.price||0) - (+y.price||0);
+                  if (currentSort === "rating") return (+y.rating||0) - (+x.rating||0);
+                  return 0;
+                });
+              }
 
-        const p2 = fetchStore("flipkart").then(data => {
-          flipkartData = data;
-          localStorage.setItem("flipkartData", JSON.stringify(data));
-          applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'), "flipkart");
-        });
+              // Render this section immediately
+              render(store, filtered);
+              return products;
+            })
+            .catch(() => {
+              document.getElementById(store).innerHTML = "<p style='color:red'>Search failed</p>";
+              return [];
+            })
+        );
 
-        const p3 = fetchStore("google").then(data => {
-          googleData = data;
-          localStorage.setItem("googleData", JSON.stringify(data));
-          applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'), "google");
-        });
-
-        // Log to history
+        // Save to history fire-and-forget
         const loggedUser = localStorage.getItem("loggedUser");
         if (loggedUser) {
           fetch(`${API_BASE}/history`, {
@@ -478,14 +483,27 @@
           }).catch(() => {});
         }
 
-        // Wait for all to finish, then save last search & trigger AI
-        Promise.allSettled([p1, p2, p3]).then(() => {
-          localStorage.setItem("lastSearch", q);
-          getAIRecommendation(q, [...amazonData, ...flipkartData, ...googleData]);
-        });
+        // Wait for all to finish for caching and AI Recommendation
+        await Promise.allSettled(fetchPromises);
+
+        localStorage.setItem("lastSearch", q);
+        localStorage.setItem("amazonData", JSON.stringify(amazonData));
+        localStorage.setItem("flipkartData", JSON.stringify(flipkartData));
+        localStorage.setItem("googleData", JSON.stringify(googleData));
+
+        const allProducts = [...amazonData, ...flipkartData, ...googleData];
+        if (allProducts.length > 0) {
+          getAIRecommendation(q, allProducts);
+        } else {
+          aiBox.innerHTML = `<div class="ai-box">No products found.</div>`;
+          aiBox.classList.remove("active");
+        }
 
       } catch (err) {
         console.error("Search error:", err);
+        document.getElementById("amazon").innerHTML   = "<p>Failed to connect to server.</p>";
+        document.getElementById("flipkart").innerHTML = "<p>Failed to connect to server.</p>";
+        aiBox.innerHTML = "";
       } finally {
         isSearching = false;
       }

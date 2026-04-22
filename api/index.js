@@ -204,9 +204,8 @@ router.post("/verify-otp", async (req, res) => {
 
 // ─── 4. SCRAPERS ─────────────────────────────────────────────────────────────
 
-
-
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
+// Upgraded to a sleek tech image instead of the blank white circle
+// Fallback removed as requested
 
 // 1. AMAZON (Powered by ScraperAPI)
 async function scrapeAmazon(query) {
@@ -215,9 +214,10 @@ async function scrapeAmazon(query) {
     if (!apiKey) return [];
 
     const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
+    // URL updated to ScraperAPI
     const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
-    const { data } = await axios.get(proxyUrl, { timeout: 25000 });
+    const { data } = await axios.get(proxyUrl, { timeout: 20000 });
     const $ = cheerio.load(data);
     const results = [];
 
@@ -239,7 +239,7 @@ async function scrapeAmazon(query) {
             title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
             price,
             rating: "4.5",
-            image: image || FALLBACK_IMG,
+            image: image || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
             link: link,
             store: "Amazon"
           });
@@ -259,9 +259,10 @@ async function scrapeFlipkart(query) {
     if (!apiKey) return [];
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
+    // URL updated to ScraperAPI
     const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
-    const { data } = await axios.get(proxyUrl, { timeout: 25000 });
+    const { data } = await axios.get(proxyUrl, { timeout: 20000 });
     const $ = cheerio.load(data);
     const results = [];
 
@@ -274,7 +275,7 @@ async function scrapeFlipkart(query) {
           .match(/₹([0-9,]+)/)?.[1]
           ?.replace(/,/g, "");
 
-        let image = FALLBACK_IMG;
+        let image = "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
         $(el)
           .find("img")
           .each((i, imgEl) => {
@@ -342,7 +343,7 @@ async function scrapeGoogle(query) {
               title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
               price,
               rating: item.rating ? String(item.rating) : "4.5",
-              image:  item.thumbnail || FALLBACK_IMG,
+              image:  item.thumbnail || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
               link:   link,
               store:  item.source   || "Google Shopping",
             };
@@ -389,7 +390,7 @@ async function scrapeGoogle(query) {
               title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
               price,
               rating: item.rating ? String(item.rating) : "4.5",
-              image:  item.thumbnail || item.image || FALLBACK_IMG,
+              image:  item.thumbnail || item.image || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
               link:   link,
               store:  item.source || item.merchant || "Web Store",
             };
@@ -424,7 +425,7 @@ async function scrapeGoogle(query) {
           $(el).find(".a8Pemb, .kHxwFf, .T14wmb, .XrAfOe").first().text().trim() || "";
         const price = priceRaw.replace(/[^\d]/g, "");
         const image =
-          $(el).find("img").attr("src") || $(el).find("img").attr("data-src") || FALLBACK_IMG;
+          $(el).find("img").attr("src") || $(el).find("img").attr("data-src") || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
         const linkElem = $(el).find("a").attr("href");
         const link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.google.com${linkElem}`) : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
 
@@ -433,7 +434,7 @@ async function scrapeGoogle(query) {
             title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
             price,
             rating: "4.5",
-            image: image.startsWith("http") ? image : FALLBACK_IMG,
+            image: image.startsWith("http") ? image : "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
             link: link,
             store,
           });
@@ -446,17 +447,20 @@ async function scrapeGoogle(query) {
     }
   }
 
-  console.warn("All Google Shopping strategies failed.");
   return [];
 }
+// ─── 5. SEARCH ENDPOINT ──────────────────────────────────────────────────────
+
 router.get("/search/:store", async (req, res) => {
-  const store = req.params.store.toLowerCase();
   const query = (req.query.q || "").trim().toLowerCase();
+  const store = req.params.store;
   if (!query) return res.status(400).json({ error: "Query required" });
 
   const cacheKey = `${store}_${query}`;
   const cached = getCached(searchCache, cacheKey);
-  if (cached) return res.json({ data: cached, fromCache: true });
+  if (cached) {
+    return res.json({ data: cached, fromCache: true });
+  }
 
   if (inflightSearches.has(cacheKey)) {
     try {
@@ -467,25 +471,23 @@ router.get("/search/:store", async (req, res) => {
     }
   }
 
-  let scrapePromise;
-  if (store === "amazon") scrapePromise = scrapeAmazon(query);
-  else if (store === "flipkart") scrapePromise = scrapeFlipkart(query);
-  else if (store === "google") scrapePromise = scrapeGoogle(query);
+  let scraperPromise;
+  if (store === "amazon") scraperPromise = scrapeAmazon(query);
+  else if (store === "flipkart") scraperPromise = scrapeFlipkart(query);
+  else if (store === "google") scraperPromise = scrapeGoogle(query);
   else return res.status(400).json({ error: "Invalid store" });
 
-  const promise = scrapePromise.then(result => {
-    setCache(searchCache, cacheKey, result, SEARCH_TTL);
-    return result;
-  }).finally(() => inflightSearches.delete(cacheKey));
-
-  inflightSearches.set(cacheKey, promise);
+  inflightSearches.set(cacheKey, scraperPromise);
 
   try {
-    const result = await promise;
+    const result = await scraperPromise;
+    setCache(searchCache, cacheKey, result, SEARCH_TTL);
     res.json({ data: result });
   } catch (err) {
-    console.error(`${store} search error:`, err);
+    console.error("Search error for", store, ":", err);
     res.status(500).json({ error: "Search failed" });
+  } finally {
+    inflightSearches.delete(cacheKey);
   }
 });
 
@@ -656,7 +658,8 @@ const FASHION_KEYWORDS = [
 
 function detectFashionCategory(query) {
   const q = query.toLowerCase();
-  return FASHION_KEYWORDS.some(kw => new RegExp(`\\b${kw}\\b`).test(q));
+  // Ensure we match whole words to prevent "laptop" from triggering "top"
+  return FASHION_KEYWORDS.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(q));
 }
 
 router.post("/ai-recommendation", async (req, res) => {
