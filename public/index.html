@@ -116,10 +116,6 @@
 
     <div class="hero-search reveal active">
       <h1 id="heroTagline">Compare Instantly. Save Massively.</h1>
-      <!--
-        FIX: onkeydown with debounce instead of no keyboard support.
-        The search button has type="button" to avoid accidental form submit.
-      -->
       <input id="item" placeholder="Search anything (fridge / iphone / apple fruit)"
              onkeydown="handleSearchKey(event)" />
       <button type="button" onclick="search()" class="glow-btn">Compare Prices</button>
@@ -348,7 +344,7 @@
     // ─── SKELETON LOADERS ────────────────────────────────────────────────────
     // FIX: Shows visual structure while waiting, so the page feels alive.
     // BEFORE: "Loading..." plain text replaced real content
-    function renderSkeletons(id, count = 4) {
+    function renderSkeletons(id, count = 8) {
       let html = "";
       for (let i = 0; i < count; i++) {
         html += `
@@ -431,9 +427,9 @@
       document.getElementById("storesSection").style.display = "flex";
 
       // Show skeletons immediately for instant perceived response
-      renderSkeletons("amazon",   4);
-      renderSkeletons("flipkart", 4);
-      renderSkeletons("google",   4);
+      renderSkeletons("amazon",   8);
+      renderSkeletons("flipkart", 8);
+      renderSkeletons("google",   8);
 
       // Show AI loading state in parallel
       const aiBox = document.getElementById("aiBox");
