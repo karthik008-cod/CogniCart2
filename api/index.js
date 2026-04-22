@@ -256,7 +256,7 @@ async function scrapeAmazon(query) {
     const results = [];
 
     $("div[data-component-type='s-search-result']")
-      .slice(0, 4)
+      .slice(0, 10)
       .each((_, el) => {
         const title = $(el).find("h2 span").text().trim();
         const price = $(el)
@@ -301,7 +301,7 @@ async function scrapeFlipkart(query) {
     const results = [];
 
     $("div[data-id]")
-      .slice(0, 4)
+      .slice(0, 10)
       .each((_, el) => {
         const title = $(el).find("img").attr("alt");
         const price = $(el)
@@ -367,7 +367,7 @@ async function scrapeGoogle(query) {
           return !store.includes("amazon") && !store.includes("flipkart");
         });
         if (filtered.length) {
-          return filtered.slice(0, 4).map((item) => {
+          return filtered.slice(0, 10).map((item) => {
             const rawPrice = item.price || item.extracted_price || "";
             const price = rawPrice.toString().replace(/[^\d]/g, "") ||
                           String(Math.floor(Math.random() * 20000) + 8000);
@@ -414,7 +414,7 @@ async function scrapeGoogle(query) {
           return !store.includes("amazon") && !store.includes("flipkart");
         });
         if (filtered.length) {
-          return filtered.slice(0, 4).map((item) => {
+          return filtered.slice(0, 10).map((item) => {
             const rawPrice = item.price || item.extracted_price || "";
             const price = rawPrice.toString().replace(/[^\d]/g, "") ||
                           String(Math.floor(Math.random() * 20000) + 8000);
@@ -451,7 +451,7 @@ async function scrapeGoogle(query) {
           $(el).find(".aULzUe, .E5ocAb, .IuHnof, .NbV1uc").first().text().trim() || "Google Shopping";
         
         if (store.toLowerCase().includes("amazon") || store.toLowerCase().includes("flipkart")) return;
-        if (results.length >= 4) return false;
+        if (results.length >= 10) return false;
 
         const title =
           $(el).find(".Xjkr3b, .tAxDx, h3, .rgHvZc").first().text().trim() || "";

@@ -63,12 +63,14 @@
       }
       .ai-highlight {
         border: 2px solid transparent !important;
-        background-image: linear-gradient(var(--surface), var(--surface)), linear-gradient(135deg, #f59e0b, #ec4899) !important;
+        background-image: linear-gradient(var(--bg-raised), var(--bg-raised)), linear-gradient(135deg, #f59e0b, #ec4899) !important;
         background-origin: border-box !important;
         background-clip: padding-box, border-box !important;
         box-shadow: 0 8px 30px rgba(245, 158, 11, 0.2) !important;
         animation: aiGlow 2s infinite alternate;
         position: relative;
+        /* allow badge to show outside */
+        overflow: visible !important;
       }
       .ai-badge {
         position: absolute;
@@ -130,16 +132,13 @@
           <option value="">Default</option>
           <option value="price">Lowest Price</option>
           <option value="rating">Highest Rating</option>
-          <option value="delivery">Fast Delivery</option>
         </select>
       </div>
       <div class="filter-chips" id="filterChips">
         <div class="chip active" onclick="applyFilter('all', this)">All</div>
         <div class="chip" onclick="applyFilter('under1000', this)">Under ₹1000</div>
         <div class="chip" onclick="applyFilter('topRated', this)">Top Rated 4.5+⭐</div>
-        <div class="chip" onclick="applyFilter('fastDelivery', this)">Fastest Delivery</div>
       </div>
-      <p id="time" class="text-muted"></p>
     </div>
 
     <div id="aiBox" class="reveal"></div>
@@ -459,9 +458,6 @@
         localStorage.setItem("flipkartData", JSON.stringify(data.flipkart || []));
         localStorage.setItem("googleData",   JSON.stringify(data.google   || []));
 
-        document.getElementById("time").innerText =
-          (data.fromCache ? "⚡ Cached — " : "") + "Last updated: " + data.lastUpdated;
-
         amazonData   = data.amazon   || [];
         flipkartData = data.flipkart || [];
         googleData   = data.google   || [];
@@ -501,16 +497,6 @@
     }
 
     // ─── RENDER PRODUCTS ─────────────────────────────────────────────────────
-    // FIX: deliveryDays was randomly assigned inside render(), so every re-sort
-    // or re-render mutated the data and gave different values.
-    // Now we normalise data once, before render, and store it consistently.
-    function normalizeProducts(list) {
-      return list.map(p => ({
-        ...p,
-        // Assign once; subsequent renders use the same value
-        deliveryDays: p.deliveryDays || (Math.floor(Math.random() * 5) + 1),
-      }));
-    }
 
     function render(id, list) {
       if (!list?.length) {
@@ -521,20 +507,15 @@
       let highlightItem = null;
       if (currentSort === "price")    highlightItem = list.reduce((a, b) => (+a.price < +b.price ? a : b));
       if (currentSort === "rating")   highlightItem = list.reduce((a, b) => (+a.rating||0) > (+b.rating||0) ? a : b);
-      if (currentSort === "delivery") highlightItem = list.reduce((a, b) => (a.deliveryDays||999) < (b.deliveryDays||999) ? a : b);
 
       // FIX: Build HTML with a DocumentFragment-style approach using array join
       // (avoids repeated DOM manipulation; single innerHTML assignment)
       const cards = list.map((p, index) => {
         const highlight  = highlightItem && highlightItem.title === p.title;
-        // FIX: encodeURIComponent only on minimal fields needed, not full object
         const productData = encodeURIComponent(JSON.stringify({
           title: p.title, price: p.price, image: p.image,
-          rating: p.rating, deliveryDays: p.deliveryDays,
+          rating: p.rating
         }));
-        const deliveryHtml = p.deliveryDays
-          ? `<p class="delivery">🚚 Delivery: ${p.deliveryDays} day${p.deliveryDays > 1 ? "s" : ""}</p>`
-          : `<p class="delivery" style="color:var(--success)">🚚 In Stock</p>`;
         const storeName = p.store || (id === "amazon" ? "Amazon" : id === "flipkart" ? "Flipkart" : "Store");
         const storeLink = p.link || "#";
         const storeBadge = `<a href="${storeLink}" target="_blank" rel="noopener noreferrer" class="store-link" 
@@ -552,7 +533,6 @@
               <h4>${p.title}</h4>
               <p class="price">₹${p.price}</p>
               <p class="rating">⭐ ${p.rating}</p>
-              ${deliveryHtml}
               ${storeBadge}
               ${highlight ? "<span class='badge'>Top Choice</span>" : ""}
               <button class="add-cart-btn" data-product="${productData}" onclick="addToCart(this)">Add to Cart</button>
@@ -676,16 +656,12 @@
       } else if (currentFilter === 'topRated') {
         const filterFn = p => (+p.rating||0) >= 4.5;
         a = a.filter(filterFn); f = f.filter(filterFn); g = g.filter(filterFn);
-      } else if (currentFilter === 'fastDelivery') {
-        const filterFn = p => (p.deliveryDays||99) <= 2;
-        a = a.filter(filterFn); f = f.filter(filterFn); g = g.filter(filterFn);
       }
 
       // 2. Sort
       const sortFn = (x, y) => {
         if (currentSort === "price")    return (+x.price||0) - (+y.price||0);
         if (currentSort === "rating")   return (+y.rating||0) - (+x.rating||0);
-        if (currentSort === "delivery") return (x.deliveryDays||0) - (y.deliveryDays||0);
         return 0;
       };
 
@@ -981,19 +957,13 @@
 
       // Summary Panel
       const subtotal = cart.reduce((s, p) => s + parseInt(p.price || 0), 0);
-      const shipping = subtotal > 10000 ? 0 : 99;
-      const total    = subtotal + shipping;
+      const total    = subtotal;
 
       cartSummary.innerHTML = `
         <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:20px;padding:25px;margin-top:20px">
           <h4 style="margin-bottom:18px;font-size:1.1rem;border-bottom:1px solid var(--glass-border);padding-bottom:12px">💳 Order Summary</h4>
           <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
             <div style="display:flex;justify-content:space-between;color:var(--text-muted)"><span>Subtotal (${cart.length} items)</span><span style="color:var(--text-main);font-weight:600">&#x20b9;${subtotal.toLocaleString('en-IN')}</span></div>
-            <div style="display:flex;justify-content:space-between;color:var(--text-muted)">
-              <span>Shipping</span>
-              <span style="color:${shipping === 0 ? 'var(--success)' : 'var(--text-main)'}">${shipping === 0 ? '✅ FREE' : '&#x20b9;' + shipping}</span>
-            </div>
-            ${shipping === 0 ? '' : '<div style="font-size:0.78rem;color:var(--text-muted)">Add &#x20b9;' + (10000 - subtotal).toLocaleString('en-IN') + ' more for free shipping!</div>'}
             <div style="border-top:1px solid var(--glass-border);padding-top:10px;display:flex;justify-content:space-between;font-size:1.15rem;font-weight:700">
               <span>Total</span>
               <span style="color:var(--primary-light)">&#x20b9;${total.toLocaleString('en-IN')}</span>
@@ -1045,8 +1015,7 @@
         .then(r => r.json())
         .then(cart => {
           const subtotal = cart.reduce((s, p) => s + parseInt(p.price || 0), 0);
-          const shipping = subtotal > 10000 ? 0 : 99;
-          const total = subtotal + shipping;
+          const total = subtotal;
           const el = document.getElementById("payOrderTotal");
           if (el) el.querySelector("span:last-child").textContent = "₹" + total.toLocaleString("en-IN");
         }).catch(() => {});
