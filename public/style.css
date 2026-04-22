@@ -682,6 +682,28 @@ select option { background: var(--bg-surface); color: var(--text-main); }
   pointer-events: none;
 }
 
+/* ── Resize handle (top-left corner of chat box) ── */
+.chat-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nw-resize;
+  z-index: 10;
+  border-radius: 0 0 8px 0;
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(124, 109, 247, 0.4) 50%
+  );
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#chatBox:hover .chat-resize-handle {
+  opacity: 1;
+}
+
 .chat-header {
   padding: 16px 20px;
   font-family: 'Syne', sans-serif;
@@ -946,7 +968,69 @@ select option { background: var(--bg-surface); color: var(--text-main); }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
 
+/* ── Payment Method Tiles ─────────────────────── */
+.pay-method-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.22s var(--ease-smooth);
+  user-select: none;
+}
+.pay-method-tile:hover {
+  border-color: rgba(124,109,247,0.4);
+  background: rgba(124,109,247,0.08);
+  color: var(--text-main);
+  transform: translateY(-2px);
+}
+.pay-method-tile--active {
+  border-color: var(--primary) !important;
+  background: rgba(124,109,247,0.14) !important;
+  color: var(--text-main) !important;
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+/* UPI app shortcut chips */
+.upi-app-chip {
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  transition: all 0.18s;
+  user-select: none;
+}
+.upi-app-chip:hover {
+  border-color: rgba(124,109,247,0.4);
+  background: rgba(124,109,247,0.1);
+  color: var(--text-main);
+}
+
+
 /* ── Responsive ───────────────────────────────── */
+
+/* Prevent horizontal overflow on all screen sizes */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Ensure fixed-position elements stay within viewport bounds */
+#chatBox, #chatToggle {
+  max-width: calc(100vw - 24px);
+}
+
 @media (max-width: 900px) {
   .store-section { gap: 24px; }
 }
@@ -954,16 +1038,52 @@ select option { background: var(--bg-surface); color: var(--text-main); }
   .store-section  { flex-direction: column; }
   .hero-search h1 { font-size: 2rem; letter-spacing: -0.5px; }
   .hero-search    { padding: 60px 20px 40px; }
-  .user-controls  { justify-content: center; flex-wrap: wrap; }
-  .top-bar        { height: auto; flex-direction: column; padding: 14px 5%; gap: 10px; }
-  #chatBox        { width: calc(100vw - 32px); right: 16px; }
-  #chatToggle     { right: 16px; bottom: 20px; }
-  .modal-content  { padding: 32px 24px; }
+  .user-controls  { justify-content: center; flex-wrap: wrap; gap: 6px; }
+  .top-bar        { height: auto; flex-direction: column; padding: 12px 5%; gap: 10px; }
+  .top-bar h2     { font-size: 1.3rem; }
+  .modal-content  { padding: 28px 18px; max-width: calc(100vw - 32px) !important; }
+
+  /* Chat: full width on mobile, anchored at bottom */
+  #chatBox {
+    width: calc(100vw - 24px) !important;
+    right: 12px !important;
+    left: 12px !important;
+    bottom: 90px !important;
+    top: auto !important;
+    max-height: calc(100vh - 130px);
+    height: 420px;
+    border-radius: 20px;
+    /* Prevent dragging from pushing it off-screen */
+    transform: none !important;
+  }
+  #chatToggle {
+    right: 20px;
+    bottom: 20px;
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
+  }
+  .chat-resize-handle { display: none; } /* no resize on mobile */
+
+  /* Payment tiles 2-col on small screens */
+  #payStep1 > div {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
 }
 @media (max-width: 480px) {
   .hero-search input { font-size: 1rem; padding: 14px 20px; }
   .glow-btn          { padding: 12px 24px; font-size: 0.95rem; }
   .product-grid      { grid-template-columns: 1fr; }
+  .user-controls button { font-size: 0.78rem; padding: 7px 12px; }
+  .filter-chips      { gap: 6px; }
+  .chip              { font-size: 0.78rem; padding: 5px 10px; }
+  #chatBox           { height: 380px; }
+  .chat-input input  { font-size: 0.85rem; }
+  #chatSuggestions button { font-size: 0.7rem; padding: 4px 10px; }
+
+  /* Payment modal full-width on phones */
+  .modal-content     { padding: 22px 14px !important; border-radius: 20px; }
+  .pay-method-tile   { padding: 12px 6px; font-size: 0.78rem; }
 }
 
 /* ── Selection Highlight ──────────────────────── */

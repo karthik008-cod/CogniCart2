@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Cognitive Cart</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="style.css" />
@@ -181,34 +181,109 @@
 
     <!-- Payment Modal -->
     <div id="paymentModal" class="modal">
-      <div class="modal-content reveal-modal">
-        <h3>Select Payment Method</h3>
-        <select id="paymentSelect">
-          <option value="">Choose</option>
-          <option value="UPI">UPI</option>
-          <option value="Card">Card</option>
-          <option value="COD">Cash On Delivery</option>
-        </select>
-        <button onclick="confirmPayment()">Confirm Payment</button>
-        <button class="close-modal-btn" onclick="closeModal('paymentModal')">Cancel</button>
+      <div class="modal-content reveal-modal" style="max-width:480px;padding:36px 32px;gap:0">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+          <div>
+            <h3 style="font-size:1.45rem;margin-bottom:4px">Secure Checkout</h3>
+            <p style="color:var(--text-muted);font-size:0.82rem;margin:0">🔒 256-bit SSL encrypted payment</p>
+          </div>
+          <span onclick="closeModal('paymentModal')" style="cursor:pointer;color:var(--text-muted);font-size:1.3rem;line-height:1;padding:4px 8px;border-radius:8px;transition:0.2s" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">✕</span>
+        </div>
+
+        <!-- Order total strip -->
+        <div id="payOrderTotal" style="background:rgba(124,109,247,0.08);border:1px solid rgba(124,109,247,0.2);border-radius:14px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+          <span style="color:var(--text-muted);font-size:0.88rem">Order Total</span>
+          <span style="font-size:1.25rem;font-weight:700;color:var(--primary)">₹—</span>
+        </div>
+
+        <!-- Step 1: Choose method -->
+        <div id="payStep1">
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;text-align:left">Choose payment method</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+            <div class="pay-method-tile" id="tile-upi" onclick="selectPayMethod('UPI')">
+              <span style="font-size:1.6rem">📱</span>
+              <span>UPI</span>
+            </div>
+            <div class="pay-method-tile" id="tile-card" onclick="selectPayMethod('Card')">
+              <span style="font-size:1.6rem">💳</span>
+              <span>Card</span>
+            </div>
+            <div class="pay-method-tile" id="tile-cod" onclick="selectPayMethod('COD')">
+              <span style="font-size:1.6rem">🏠</span>
+              <span>COD</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2a: UPI details -->
+        <div id="payFormUPI" style="display:none">
+          <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">UPI ID</label>
+          <input id="upiId" type="text" placeholder="yourname@upi" style="width:100%;margin-bottom:12px"/>
+          <p style="font-size:0.78rem;color:var(--text-muted);text-align:left;margin-bottom:14px">Popular: GPay, PhonePe, Paytm, BHIM</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+            <span class="upi-app-chip" onclick="document.getElementById('upiId').value='yourname@oksbi'">🟢 GPay</span>
+            <span class="upi-app-chip" onclick="document.getElementById('upiId').value='yourname@ybl'">📲 PhonePe</span>
+            <span class="upi-app-chip" onclick="document.getElementById('upiId').value='yourname@paytm'">💠 Paytm</span>
+          </div>
+          <button class="glow-btn" onclick="confirmPayment()" style="width:100%;padding:13px">Pay Now 🔒</button>
+          <button onclick="backToPayStep1()" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text-muted)">← Change Method</button>
+        </div>
+
+        <!-- Step 2b: Card details -->
+        <div id="payFormCard" style="display:none">
+          <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Card Number</label>
+          <input id="cardNum" type="text" placeholder="1234 5678 9012 3456" maxlength="19" oninput="fmtCardNum(this)" style="width:100%;margin-bottom:10px;letter-spacing:2px"/>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Expiry</label>
+              <input id="cardExpiry" type="text" placeholder="MM / YY" maxlength="7" oninput="fmtExpiry(this)" style="width:100%"/>
+            </div>
+            <div>
+              <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">CVV</label>
+              <input id="cardCVV" type="password" placeholder="•••" maxlength="3" style="width:100%"/>
+            </div>
+          </div>
+          <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Name on Card</label>
+          <input id="cardName" type="text" placeholder="Full name" style="width:100%;margin-bottom:14px"/>
+          <button class="glow-btn" onclick="confirmPayment()" style="width:100%;padding:13px">Pay Now 🔒</button>
+          <button onclick="backToPayStep1()" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text-muted)">← Change Method</button>
+        </div>
+
+        <!-- Step 2c: COD -->
+        <div id="payFormCOD" style="display:none">
+          <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:18px;text-align:center;margin-bottom:16px">
+            <div style="font-size:2.5rem;margin-bottom:8px">🏠</div>
+            <h4 style="color:var(--success);margin-bottom:6px;font-size:1rem">Cash on Delivery</h4>
+            <p style="color:var(--text-muted);font-size:0.85rem">Pay in cash when your order arrives. No extra charges.</p>
+          </div>
+          <div style="background:var(--glass-bg);border-radius:12px;padding:14px;margin-bottom:16px;text-align:left">
+            <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:4px">📦 Estimated delivery: <strong style="color:var(--text-main)">3–5 business days</strong></p>
+            <p style="font-size:0.82rem;color:var(--text-muted)">✅ Keep exact change ready at the time of delivery</p>
+          </div>
+          <button class="glow-btn" onclick="confirmPayment()" style="width:100%;padding:13px">Confirm COD Order</button>
+          <button onclick="backToPayStep1()" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text-muted)">← Change Method</button>
+        </div>
+
       </div>
     </div>
 
-    <div id="chatToggle">💬</div>
+    <div id="chatToggle" title="Chat with Cognitive Bot">🤖</div>
     <div id="chatBox" class="chat-hidden">
+      <div class="chat-resize-handle" id="chatResizeHandle" title="Drag to resize"></div>
       <div class="chat-header">
-        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem">🤖</span> CartBot</span>
+        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem">🤖</span> Cognitive Bot</span>
         <span class="close-btn" id="closeChat">✖</span>
       </div>
       <div id="chatMessages" class="chat-messages"></div>
       <div id="chatSuggestions" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-top:1px solid rgba(255,255,255,0.06)">
-        <button onclick="injectSuggestion('Best deal right now?')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">Best deal right now?</button>
-        <button onclick="injectSuggestion('Compare Amazon vs Flipkart')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">Amazon vs Flipkart?</button>
-        <button onclick="injectSuggestion('What is in my cart?')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">My cart?</button>
+        <button onclick="injectSuggestion('Recommend the best from these results')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">⭐ Best pick?</button>
+        <button onclick="injectSuggestion('Compare Amazon vs Flipkart results')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">Amazon vs Flipkart?</button>
+        <button onclick="injectSuggestion('What is the cheapest option?')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">💰 Cheapest?</button>
         <button onclick="injectSuggestion('Tip to save money shopping online')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">💡 Savings tip</button>
       </div>
       <div class="chat-input">
-        <input id="chatInput" placeholder="Ask CartBot anything…" />
+        <input id="chatInput" placeholder="Ask Cognitive Bot…" />
         <button id="voiceBtn" title="Voice Input">🎙</button>
         <button id="sendBtn">Send</button>
       </div>
@@ -953,23 +1028,109 @@
 
     // ─── ORDERS & HISTORY ────────────────────────────────────────────────────
     function placeOrder() {
+      openPaymentModal();
+    }
+
+    // ─── PAYMENT METHOD SELECTION ────────────────────────────────────────────
+    let _selectedPayMethod = "";
+
+    function openPaymentModal() {
+      // Compute current cart total for display
+      const username = localStorage.getItem("loggedUser");
+      fetch(`${API_BASE}/cart/${encodeURIComponent(username)}`)
+        .then(r => r.json())
+        .then(cart => {
+          const subtotal = cart.reduce((s, p) => s + parseInt(p.price || 0), 0);
+          const shipping = subtotal > 10000 ? 0 : 99;
+          const total = subtotal + shipping;
+          const el = document.getElementById("payOrderTotal");
+          if (el) el.querySelector("span:last-child").textContent = "₹" + total.toLocaleString("en-IN");
+        }).catch(() => {});
+
+      // Reset to step 1
+      backToPayStep1();
       document.getElementById("paymentModal").style.display = "flex";
     }
 
-    async function confirmPayment() {
-      const paymentMethod = document.getElementById("paymentSelect").value;
-      if (!paymentMethod) { toast("Select a payment method", "error"); return; }
-
-      const username = localStorage.getItem("loggedUser");
-      const res      = await fetch(`${API_BASE}/place-order`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ username, paymentMethod }),
+    function selectPayMethod(method) {
+      _selectedPayMethod = method;
+      // Highlight selected tile
+      ["tile-upi","tile-card","tile-cod"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove("pay-method-tile--active");
       });
-      const data = await res.json();
-      toast(data.message, "success", 4000);
-      closeModal("paymentModal");
-      showSection("orders");
+      const tileMap = { UPI: "tile-upi", Card: "tile-card", COD: "tile-cod" };
+      const activeTile = document.getElementById(tileMap[method]);
+      if (activeTile) activeTile.classList.add("pay-method-tile--active");
+
+      // Show corresponding form
+      document.getElementById("payFormUPI").style.display  = method === "UPI"  ? "block" : "none";
+      document.getElementById("payFormCard").style.display = method === "Card" ? "block" : "none";
+      document.getElementById("payFormCOD").style.display  = method === "COD"  ? "block" : "none";
+    }
+
+    function backToPayStep1() {
+      _selectedPayMethod = "";
+      ["payFormUPI","payFormCard","payFormCOD"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+      });
+      ["tile-upi","tile-card","tile-cod"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove("pay-method-tile--active");
+      });
+      document.getElementById("payStep1").style.display = "block";
+    }
+
+    // Card number formatter
+    function fmtCardNum(el) {
+      let v = el.value.replace(/\D/g, "").substring(0,16);
+      el.value = v.match(/.{1,4}/g)?.join(" ") || v;
+    }
+    function fmtExpiry(el) {
+      let v = el.value.replace(/\D/g, "").substring(0,4);
+      if (v.length >= 3) v = v.slice(0,2) + " / " + v.slice(2);
+      el.value = v;
+    }
+
+    async function confirmPayment() {
+      if (!_selectedPayMethod) { toast("Select a payment method", "error"); return; }
+
+      // Validate inputs per method
+      if (_selectedPayMethod === "UPI") {
+        const upi = document.getElementById("upiId")?.value.trim();
+        if (!upi || !upi.includes("@")) { toast("Enter a valid UPI ID (e.g. name@upi)", "error"); return; }
+      }
+      if (_selectedPayMethod === "Card") {
+        const num = document.getElementById("cardNum")?.value.replace(/\s/g,"");
+        const exp = document.getElementById("cardExpiry")?.value;
+        const cvv = document.getElementById("cardCVV")?.value;
+        const nm  = document.getElementById("cardName")?.value.trim();
+        if (!num || num.length < 16) { toast("Enter a valid 16-digit card number", "error"); return; }
+        if (!exp || exp.length < 7)  { toast("Enter a valid expiry date", "error"); return; }
+        if (!cvv || cvv.length < 3)  { toast("Enter a valid 3-digit CVV", "error"); return; }
+        if (!nm)                      { toast("Enter the name on card", "error"); return; }
+      }
+
+      // Optimistic UI — show processing
+      const payBtn = document.querySelector(`#payForm${_selectedPayMethod} .glow-btn`);
+      if (payBtn) { payBtn.disabled = true; payBtn.textContent = "Processing…"; }
+
+      try {
+        const username = localStorage.getItem("loggedUser");
+        const res      = await fetch(`${API_BASE}/place-order`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ username, paymentMethod: _selectedPayMethod }),
+        });
+        const data = await res.json();
+        closeModal("paymentModal");
+        toast("🎉 " + (data.message || "Order placed successfully!"), "success", 5000);
+        showSection("orders");
+      } catch {
+        toast("Payment failed. Please try again.", "error");
+        if (payBtn) { payBtn.disabled = false; payBtn.textContent = "Pay Now 🔒"; }
+      }
     }
 
     async function loadOrders() {
@@ -1086,6 +1247,21 @@
         initialTop  = rect.top;
       });
 
+      // Touch drag support for mobile
+      chatHeader.addEventListener("touchstart", (e) => {
+        const touch = e.touches[0];
+        isDragging = true;
+        dragStartX = touch.clientX;
+        dragStartY = touch.clientY;
+        const rect = chatBox.getBoundingClientRect();
+        chatBox.style.bottom = "auto";
+        chatBox.style.right  = "auto";
+        chatBox.style.left   = rect.left + "px";
+        chatBox.style.top    = rect.top  + "px";
+        initialLeft = rect.left;
+        initialTop  = rect.top;
+      }, { passive: true });
+
       document.addEventListener("mousemove", (e) => {
         if (!isDragging) return;
         e.preventDefault();
@@ -1093,7 +1269,50 @@
         chatBox.style.top  = (initialTop  + (e.clientY - dragStartY)) + "px";
       });
 
+      document.addEventListener("touchmove", (e) => {
+        if (!isDragging) return;
+        const touch = e.touches[0];
+        chatBox.style.left = (initialLeft + (touch.clientX - dragStartX)) + "px";
+        chatBox.style.top  = (initialTop  + (touch.clientY - dragStartY)) + "px";
+      }, { passive: true });
+
       document.addEventListener("mouseup", () => { isDragging = false; });
+      document.addEventListener("touchend", () => { isDragging = false; });
+
+    // --- RESIZABLE CHAT LOGIC ---
+    (() => {
+      const resizeHandle = document.getElementById("chatResizeHandle");
+      let isResizing = false;
+      let resizeStartX, resizeStartY, resizeStartW, resizeStartH;
+
+      resizeHandle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isResizing = true;
+        resizeStartX = e.clientX;
+        resizeStartY = e.clientY;
+        resizeStartW = chatBox.offsetWidth;
+        resizeStartH = chatBox.offsetHeight;
+        document.body.style.userSelect = "none";
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (!isResizing) return;
+        const dx = resizeStartX - e.clientX; // resize from left edge
+        const dy = resizeStartY - e.clientY; // resize from top edge
+        const newW = Math.min(Math.max(resizeStartW + dx, 280), window.innerWidth - 40);
+        const newH = Math.min(Math.max(resizeStartH + dy, 350), window.innerHeight - 100);
+        chatBox.style.width  = newW + "px";
+        chatBox.style.height = newH + "px";
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (isResizing) {
+          isResizing = false;
+          document.body.style.userSelect = "";
+        }
+      });
+    })();
 
     document.addEventListener("DOMContentLoaded", function () {
       const chatToggle     = document.getElementById("chatToggle");
@@ -1124,7 +1343,7 @@
         chatToggle.style.transform = "scale(0)";
         // Show welcome message once
         if (!messagesDiv.children.length) {
-          addMessage("bot", "👋 Hey! I'm **CartBot**, your smart shopping assistant. Ask me about deals, platforms, your cart, or savings tips!");
+          addMessage("bot", "👋 Hey! I'm **Cognitive Bot**, your intelligent shopping assistant. I can analyze the search results on screen, recommend the best deal, compare platforms, and answer your shopping questions!");
         }
       });
       closeBtn.addEventListener("click", () => {
@@ -1154,19 +1373,35 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
         try {
-          // Grab the username from storage to send to the AI
           const username = localStorage.getItem("loggedUser");
+
+          // Build search context from current search results on screen
+          let searchContext = null;
+          const lastSearch = localStorage.getItem("lastSearch");
+          const allProducts = [...amazonData, ...flipkartData, ...googleData];
+          if (lastSearch && allProducts.length) {
+            searchContext = {
+              query: lastSearch,
+              products: allProducts.map(p => ({
+                title: p.title,
+                price: p.price,
+                rating: p.rating,
+                store: p.store
+              }))
+            };
+          }
+
           const res  = await fetch(`${API_BASE}/chatbot`, {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ message, username }),
+            body:    JSON.stringify({ message, username, searchContext }),
           });
           const data = await res.json();
           document.getElementById("typingIndicator")?.remove();
           addMessage("bot", data.reply);
         } catch {
           document.getElementById("typingIndicator")?.remove();
-          addMessage("bot", "AI unavailable. Please try again.");
+          addMessage("bot", "Connection issue. Please try again! 🔄");
         } finally {
           isChatSending    = false;
           sendBtn.disabled = false;
@@ -1195,6 +1430,7 @@
         sendMessage();
       };
     });
+
 
     // ─── AUTH INPUT LISTENER ─────────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", () => {

@@ -797,62 +797,88 @@ router.post("/ai-recommendation", async (req, res) => {
 });
 
 router.post("/chatbot", async (req, res) => {
-  const { message, username } = req.body; // NOW ACCEPTING USERNAME
+  const { message, username, searchContext } = req.body; // searchContext = { query, products }
   if (!message?.trim()) return res.json({ reply: "Say something!" });
 
   try {
     let userContext = "";
+    let searchResultsContext = "";
 
     // If user is logged in, fetch their cart and orders from MongoDB
     if (username) {
-      const db = await connectDB();
-      const user = await db
-        .collection("users")
-        .findOne({ username }, { projection: { cart: 1, orders: 1 } });
+      try {
+        const db = await connectDB();
+        const user = await db
+          .collection("users")
+          .findOne({ username }, { projection: { cart: 1, orders: 1 } });
 
-      if (user) {
-        const cartStr =
-          (user.cart || []).map((p) => p.title).join(", ") || "Empty";
-        const ordersStr =
-          (user.orders || [])
-            .map(
-              (o) =>
-                `Items: ${o.items.map((i) => i.title).join(", ")} | Date: ${o.orderDate}`,
-            )
-            .join(" ; ") || "No orders yet";
+        if (user) {
+          const cartStr =
+            (user.cart || []).map((p) => p.title).join(", ") || "Empty";
+          const ordersStr =
+            (user.orders || [])
+              .map(
+                (o) =>
+                  `Items: ${o.items.map((i) => i.title).join(", ")} | Date: ${o.orderDate}`,
+              )
+              .join(" ; ") || "No orders yet";
 
-        // UPGRADED CONTEXT: Tells Llama strictly when to use this data
-        userContext = `\n[HIDDEN CONTEXT]: User Cart: [${cartStr}] | User Orders: [${ordersStr}].\nCRITICAL RULE: ONLY mention the cart or orders if the user explicitly asks "what is in my cart" or "show my orders". If they ask a general question, DO NOT mention the cart or orders.`;
+          userContext = `\n[HIDDEN USER DATA]: User Cart: [${cartStr}] | User Orders: [${ordersStr}].\nCRITICAL RULE: ONLY mention the cart or orders if the user explicitly asks about their cart or orders. If they ask a general question, DO NOT mention the cart or orders.`;
+        }
+      } catch (dbErr) {
+        // Non-fatal — continue without user context
+        console.warn("Chatbot: DB context fetch failed:", dbErr.message);
       }
     }
 
+    // If the frontend sends the current search results, include them as context
+    if (searchContext?.products?.length) {
+      const productList = searchContext.products
+        .slice(0, 15)
+        .map((p, i) => `${i + 1}. "${p.title?.substring(0, 55)}" — ₹${p.price}, ⭐${p.rating || "N/A"}, Store: ${p.store || "Unknown"}`)
+        .join("\n");
+
+      searchResultsContext =
+        `\n[CURRENT SEARCH CONTEXT]: The user has just searched for "${searchContext.query}" on Cognitive Cart. ` +
+        `Here are the actual search results currently shown on screen:\n${productList}\n` +
+        `CRITICAL RULES FOR SEARCH RESULTS:\n` +
+        `- If the user asks to recommend the best, pick the top choice based on price/rating/store balance and explain why clearly.\n` +
+        `- If the user asks to compare products, compare 2-3 specific ones from the list above.\n` +
+        `- If the user asks about a specific store (e.g. Amazon vs Flipkart), refer to actual products from those stores in the list.\n` +
+        `- ALWAYS reference actual product names and prices from the list above when discussing search results.\n` +
+        `- If a query asks "best deal", pick the one with best price-to-rating ratio.\n`;
+    }
+
     const prompt =
-      `You are 'CartBot', the friendly and knowledgeable AI shopping assistant for Cognitive Cart — India's smartest price comparison app. ` +
-      `Your personality: warm, helpful, a bit enthusiastic about saving money, conversational. ` +
-      `You specialize in: finding the best deals between Amazon, Flipkart, Meesho, Myntra, and other Indian platforms; explaining price trends; helping users decide what to buy; answering general shopping questions. ` +
-      `Guidelines: Keep replies to 2-3 sentences max. Use natural Indian English (can use INR ₹ signs). ` +
-      `Use emojis sparingly (1-2 max per reply) to stay friendly but professional. ` +
-      `If asked about platform comparisons: Amazon is best for electronics & branded goods, Flipkart is great for phones & appliances, Meesho/Myntra excel at fashion & ethnic wear at lower prices. ` +
-      `If asked what you can do, mention: searching for best deals, comparing platforms, explaining price trends, watchlist tips, and answering product questions. ` +
-      `Never say you are an AI language model — you ARE CartBot. Never mention OpenAI, Meta, or Groq. ` +
+      `You are 'Cognitive Bot', the intelligent AI shopping assistant for Cognitive Cart — India's smartest price comparison app. ` +
+      `Your personality: sharp, helpful, enthusiastic about saving money, and data-driven. ` +
+      `You specialize in: analyzing live search results shown on Cognitive Cart, finding the best deals between Amazon, Flipkart, Meesho, Myntra, and other Indian platforms; explaining price trends; helping users decide what to buy. ` +
+      `Guidelines: Keep replies to 2-4 sentences. Use natural Indian English (use ₹ signs for prices). ` +
+      `Use emojis sparingly (1-2 per reply). Be specific — always mention product names and prices when relevant. ` +
+      `If asked about platform comparisons: Amazon is best for electronics & branded goods, Flipkart is great for phones & appliances, Meesho/Myntra excel at fashion & ethnic wear. ` +
+      `Never say you are an AI language model — you ARE Cognitive Bot. Never mention OpenAI, Meta, Groq, or Llama. ` +
+      searchResultsContext +
       userContext +
       `\nUser message: "${message.trim()}"`;
 
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama-3.1-8b-instant",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
+        max_tokens: 300,
+        temperature: 0.7,
       },
       {
         headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+        timeout: 20000,
       },
     );
 
     res.json({ reply: response.data.choices[0].message.content.trim() });
   } catch (err) {
     console.error("Chatbot Groq error:", err?.response?.data || err.message);
-    res.json({ reply: "AI assistant is temporarily unavailable." });
+    res.json({ reply: "I'm having trouble connecting right now. Please try again in a moment! 🔄" });
   }
 });
 
