@@ -1022,19 +1022,10 @@
       const items = window.currentCartItems || [];
       const selects = document.querySelectorAll(".item-pay-method");
       
-      const orderItems = items.map((p, i) => {
-        return {
-          ...p,
-          paymentMethod: selects[i].value
-        };
-      });
-
-      // Open product links immediately to bypass browser popup blockers
-      orderItems.forEach(p => {
-        if (p.link && p.link !== "#") {
-          window.open(p.link, "_blank");
-        }
-      });
+      const orderItems = items.map((p, i) => ({
+        ...p,
+        paymentMethod: selects[i].value
+      }));
 
       const payBtn = document.getElementById("multiPlaceOrderBtn");
       if (payBtn) { payBtn.disabled = true; payBtn.textContent = "Processing…"; }
@@ -1048,12 +1039,60 @@
         });
         const data = await res.json();
         closeModal("paymentModal");
-        toast("🎉 " + (data.message || "Order placed successfully!"), "success", 5000);
 
         // Clear local cart items to reflect backend clear
         window.currentCartItems = [];
-        showSection("orders");
-      } catch {
+
+        // Show success overlay with clickable product links
+        const linksHtml = orderItems
+          .filter(p => p.link && p.link !== "#")
+          .map(p => `
+            <a href="${p.link}" target="_blank" rel="noopener noreferrer"
+               style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.05);
+                      border:1px solid var(--glass-border);border-radius:14px;padding:14px 18px;
+                      text-decoration:none;color:var(--text-main);transition:all 0.2s"
+               onmouseover="this.style.background='rgba(124,109,247,0.12)';this.style.borderColor='var(--primary)'"
+               onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='var(--glass-border)'">
+              <img src="${p.image}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:10px;flex-shrink:0">
+              <div style="flex:1;min-width:0">
+                <p style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">${p.title}</p>
+                <p style="font-size:0.8rem;color:var(--text-muted)">${p.store || 'Store'} · ${p.paymentMethod}</p>
+              </div>
+              <span style="color:var(--primary);font-size:1.2rem;flex-shrink:0">↗</span>
+            </a>
+          `).join("");
+
+        document.getElementById("orders").style.display = "block";
+        document.getElementById("orders").innerHTML = `
+          <div style="max-width:600px;margin:0 auto;padding:30px 20px;text-align:center">
+            <div style="font-size:4rem;margin-bottom:12px;animation:float 2s ease-in-out infinite">🎉</div>
+            <h3 style="font-size:1.6rem;margin-bottom:6px;color:var(--text-main)">Order Placed Successfully!</h3>
+            <p style="color:var(--text-muted);margin-bottom:28px;font-size:0.95rem">${data.message || 'Your order has been confirmed.'}</p>
+
+            ${linksHtml ? `
+              <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px;text-align:left;font-weight:600">
+                🛍️ Visit your product pages:
+              </p>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+                ${linksHtml}
+              </div>
+            ` : ''}
+
+            <button class="glow-btn" onclick="showSection('orders')" style="width:100%;padding:14px">
+              📦 View My Orders
+            </button>
+          </div>
+        `;
+
+        // Hide other sections
+        document.querySelector(".hero-search").style.display = "none";
+        document.getElementById("storesSection").style.display = "none";
+        document.getElementById("aiBox").style.display = "none";
+        document.getElementById("cart").style.display = "none";
+        document.getElementById("history").style.display = "none";
+
+      } catch (err) {
+        console.error("Order error:", err);
         toast("Payment failed. Please try again.", "error");
         if (payBtn) { payBtn.disabled = false; payBtn.textContent = "Place Order 🔒"; }
       }
