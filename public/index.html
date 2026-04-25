@@ -130,7 +130,7 @@
       </div>
       <div class="filter-chips" id="filterChips">
         <div class="chip active" onclick="applyFilter('all', this)">All</div>
-        <div class="chip" onclick="applyFilter('under1000', this)">Under ₹1000</div>
+        <div class="chip" id="priceRangeBtn" onclick="openPriceFilterModal()">Add Price Range</div>
         <div class="chip" onclick="applyFilter('topRated', this)">Top Rated 4.5+⭐</div>
       </div>
     </div>
@@ -219,6 +219,32 @@
       </div>
     </div>
 
+    <!-- Price Range Modal -->
+    <div id="priceFilterModal" class="modal">
+      <div class="modal-content reveal-modal" style="max-width: 360px; padding: 30px;">
+        <h3 style="margin-bottom: 20px; font-size: 1.3rem;">Set Price Range</h3>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; gap: 15px; margin-bottom: 20px;">
+          <div>
+            <label style="font-size: 0.8rem; color: var(--text-muted);">Min Price (₹)</label>
+            <input type="number" id="minPriceInput" value="0" style="width: 100%; margin-top: 5px;" min="0">
+          </div>
+          <span style="color: var(--text-muted); font-weight: bold; margin-top: 20px;">-</span>
+          <div>
+            <label style="font-size: 0.8rem; color: var(--text-muted);">Max Price (₹)</label>
+            <input type="number" id="maxPriceInput" value="50000" style="width: 100%; margin-top: 5px;" min="0">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+           <label style="font-size: 0.8rem; color: var(--text-muted);">Quick Slider (Max Price)</label>
+           <input type="range" id="priceRangeSlider" min="100" max="150000" value="50000" style="width:100%; margin-top: 8px;" oninput="document.getElementById('maxPriceInput').value = this.value">
+        </div>
+
+        <button onclick="applyPriceRange()" style="width: 100%; margin-bottom: 10px;">Apply Filter</button>
+        <button class="close-modal-btn" onclick="closeModal('priceFilterModal')" style="width: 100%;">Cancel</button>
+      </div>
+    </div>
 
     <!-- Payment Modal -->
     <div id="paymentModal" class="modal">
@@ -538,7 +564,7 @@
 
               // Filter instantly based on current active filter
               let filtered = products;
-              if (currentFilter === 'under1000') filtered = filtered.filter(p => +p.price < 1000);
+              if (currentFilter === 'customRange') filtered = filtered.filter(p => +p.price >= minPriceFilter && +p.price <= maxPriceFilter);
               if (currentFilter === 'topRated') filtered = filtered.filter(p => (+p.rating||0) >= 4.5);
               
               // Sort if needed
@@ -753,8 +779,39 @@
       renderAll();
     }
 
+    let minPriceFilter = 0;
+    let maxPriceFilter = Infinity;
+
+    function openPriceFilterModal() {
+      document.getElementById('priceFilterModal').style.display = 'flex';
+    }
+
+    function applyPriceRange() {
+      const min = parseInt(document.getElementById('minPriceInput').value) || 0;
+      const max = parseInt(document.getElementById('maxPriceInput').value) || Infinity;
+      
+      minPriceFilter = min;
+      maxPriceFilter = max;
+      currentFilter = 'customRange';
+      
+      // Update chip UI
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      const btn = document.getElementById('priceRangeBtn');
+      btn.classList.add('active');
+      btn.innerText = max === Infinity ? `₹${min}+` : `₹${min} - ₹${max}`;
+      
+      closeModal('priceFilterModal');
+      renderAll();
+    }
+
     function applyFilter(filterId, chipElement) {
       currentFilter = filterId;
+      if (filterId !== 'customRange') {
+         minPriceFilter = 0;
+         maxPriceFilter = Infinity;
+         const btn = document.getElementById('priceRangeBtn');
+         if (btn) btn.innerText = 'Add Price Range';
+      }
       if (chipElement) {
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         chipElement.classList.add('active');
@@ -768,8 +825,8 @@
       let g = [...googleData];
 
       // 1. Filter
-      if (currentFilter === 'under1000') {
-        const filterFn = p => +p.price < 1000;
+      if (currentFilter === 'customRange') {
+        const filterFn = p => +p.price >= minPriceFilter && +p.price <= maxPriceFilter;
         a = a.filter(filterFn); f = f.filter(filterFn); g = g.filter(filterFn);
       } else if (currentFilter === 'topRated') {
         const filterFn = p => (+p.rating||0) >= 4.5;
@@ -1067,16 +1124,24 @@
       const lastSearch = localStorage.getItem("lastSearch");
       const amazon     = safeParseJSON(localStorage.getItem("amazonData"));
       const flipkart   = safeParseJSON(localStorage.getItem("flipkartData"));
+      const google     = safeParseJSON(localStorage.getItem("googleData"));
 
-      if (lastSearch && (amazon.length || flipkart.length)) {
+      if (lastSearch && (amazon.length || flipkart.length || google.length)) {
         document.getElementById("item").value = lastSearch;
         amazonData   = amazon;
         flipkartData = flipkart;
+        googleData   = google;
         render("amazon",   amazonData);
         render("flipkart", flipkartData);
+        render("google",   googleData);
 
         const pg = document.getElementById("paginationControls");
-        if (pg) pg.style.display = "flex";
+        if (pg) {
+          pg.style.display = "flex";
+          document.getElementById("pageDisplay").innerText = `Page ${currentPage}`;
+          document.getElementById("prevPageBtn").disabled = (currentPage === 1);
+          document.getElementById("prevPageBtn").style.opacity = (currentPage === 1) ? "0.5" : "1";
+        }
 
         // Restore AI from sessionStorage on home navigation too
         const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
