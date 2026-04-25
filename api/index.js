@@ -1078,7 +1078,7 @@ router.post("/price-alert", async (req, res) => {
 
 // Add product to watchlist for price tracking
 router.post("/watchlist/add", async (req, res) => {
-  const { username, product } = req.body;
+  const { username, product, folder } = req.body;
   if (!username || !product)
     return res.status(400).json({ message: "Missing username or product" });
 
@@ -1108,6 +1108,7 @@ router.post("/watchlist/add", async (req, res) => {
       addedAt: new Date(),
       lastChecked: new Date(),
       priceDropNotifications: [],
+      folder: folder || "My Wishlist",
     };
 
     const result = await watchlistCollection.insertOne(watchlistEntry);
@@ -1142,11 +1143,40 @@ router.get("/watchlist/:username", async (req, res) => {
       addedAt: item.addedAt,
       lastChecked: item.lastChecked,
       priceDrops: item.priceDropNotifications || [],
+      folder: item.folder || "My Wishlist",
     }));
 
     res.json(enrichedWatchlist);
   } catch (err) {
     console.error("Get watchlist error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Create a new folder
+router.post("/folders", async (req, res) => {
+  const { username, folderName } = req.body;
+  if (!username || !folderName) return res.status(400).json({ message: "Missing fields" });
+  try {
+    const db = await connectDB();
+    await db.collection("user_folders").updateOne(
+      { username, folderName },
+      { $setOnInsert: { username, folderName, createdAt: new Date() } },
+      { upsert: true }
+    );
+    res.json({ message: "Folder created" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get user folders
+router.get("/folders/:username", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const folders = await db.collection("user_folders").find({ username: req.params.username }).toArray();
+    res.json(folders.map(f => f.folderName));
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 });

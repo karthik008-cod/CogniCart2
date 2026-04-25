@@ -307,6 +307,24 @@
       </div>
     </div>
 
+    <!-- Watchlist Folder Modal -->
+    <div id="folderSelectModal" class="modal">
+      <div class="modal-content" style="max-width:380px; padding:30px; border-radius:24px; animation:popIn 0.3s;">
+        <div style="font-size:2.5rem; text-align:center; margin-bottom:12px">📁</div>
+        <h3 style="text-align:center; font-size:1.2rem; margin-bottom:6px;">Add to Watchlist</h3>
+        <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Select a folder to save this product.</p>
+        
+        <select id="folderSelectDropdown" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(99,102,241,0.4); background:rgba(99,102,241,0.06); color:#f1f5f9; font-size:0.95rem; outline:none; margin-bottom:18px;">
+          <option value="My Wishlist">My Wishlist</option>
+        </select>
+        
+        <div style="display:flex; gap:10px;">
+          <button onclick="closeModal('folderSelectModal')" style="flex:1; padding:12px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-weight:600;">Cancel</button>
+          <button onclick="confirmAddToWatchlist()" style="flex:1; padding:12px; border-radius:12px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff; cursor:pointer; font-weight:700;">✓ Save</button>
+        </div>
+      </div>
+    </div>
+
     <div id="chatToggle" title="Chat with CogniBot">🤖</div>
     <div id="chatBox" class="chat-hidden">
       <div class="chat-resize-handle" id="chatResizeHandle" title="Drag to resize"></div>
@@ -1381,6 +1399,9 @@
     }
 
     // ─── WATCHLIST / PRICE TRACKING ──────────────────────────────────────────
+    let _watchProductPending = null;
+    let _watchBtnPending = null;
+
     async function addToWatchlist(btn) {
       const username = sessionStorage.getItem("loggedUser");
       if (!username) {
@@ -1389,24 +1410,53 @@
         return;
       }
 
-      btn.disabled = true;
-      btn.textContent = "Adding…";
+      _watchProductPending = JSON.parse(decodeURIComponent(btn.dataset.product || "{}"));
+      _watchBtnPending = btn;
+
+      const dropdown = document.getElementById("folderSelectDropdown");
+      dropdown.innerHTML = `<option value="My Wishlist">My Wishlist</option>`;
+
+      // Fetch user folders to populate dropdown
+      try {
+        const res = await fetch(`${API_BASE}/folders/${encodeURIComponent(username)}`);
+        const folders = await res.json();
+        const allFolders = new Set(["My Wishlist", ...folders]);
+        dropdown.innerHTML = Array.from(allFolders).map(f => `<option value="${f}">${f}</option>`).join("");
+      } catch (err) {
+        console.error("Failed to load folders:", err);
+      }
+
+      document.getElementById("folderSelectModal").style.display = "flex";
+    }
+
+    async function confirmAddToWatchlist() {
+      const username = sessionStorage.getItem("loggedUser");
+      const folder = document.getElementById("folderSelectDropdown").value;
+      const product = _watchProductPending;
+      const btn = _watchBtnPending;
+
+      closeModal("folderSelectModal");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Adding…";
+      }
 
       try {
-        const product = JSON.parse(decodeURIComponent(btn.dataset.product || "{}"));
         const res = await fetch(`${API_BASE}/watchlist/add`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, product }),
+          body: JSON.stringify({ username, product, folder }),
         });
         const data = await res.json();
-        toast("📊 Added to watchlist! You'll get email alerts on price drops.", "success", 4000);
-        btn.textContent = "✓ Watching";
+        toast(`📊 Added to "${folder}"! You'll get email alerts on price drops.`, "success", 4000);
+        if (btn) btn.textContent = "✓ Watching";
       } catch (err) {
         console.error("Watchlist error:", err);
         toast("Failed to add to watchlist", "error");
-        btn.disabled = false;
-        btn.textContent = "📊 Watch Price";
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "📊 Watch Price";
+        }
       }
     }
 

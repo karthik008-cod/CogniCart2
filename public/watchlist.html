@@ -242,36 +242,48 @@
             if (!res.ok) throw new Error(`Server ${res.status}`);
             const watchlist = await res.json();
 
+            // Fetch explicit folders from DB
+            const folderRes = await fetch(`${API_BASE}/folders/${encodeURIComponent(user)}`);
+            let userFolders = [];
+            if (folderRes.ok) userFolders = await folderRes.json();
+
             document.getElementById("loadingState").style.display = "none";
             document.getElementById("lastUpdated").textContent = "Updated " + new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
 
-            if (!Array.isArray(watchlist) || watchlist.length === 0) {
+            // ── Smart Wishlist Folders
+            const folders = { "My Wishlist": [] }; // Ensure default exists
+            userFolders.forEach(f => { if (!folders[f]) folders[f] = []; }); // Add DB folders
+            
+            let totalValue = 0, totalSavings = 0, withDrops = 0;
+
+            if (Array.isArray(watchlist) && watchlist.length > 0) {
+                // Stats
+                totalSavings = watchlist.reduce((t, i) => t + Math.max(0, (i.previousPrice||i.currentPrice) - i.currentPrice), 0);
+                withDrops    = watchlist.filter(i => i.priceDrops?.length > 0).length;
+                totalValue   = watchlist.reduce((t, i) => t + (i.currentPrice || 0), 0);
+                const lowestItem   = watchlist.reduce((a, b) => (a.currentPrice || 0) < (b.currentPrice || 0) ? a : b);
+
+                document.getElementById("statsContainer").style.display = "grid";
+                document.getElementById("statsContainer").innerHTML = `
+                    <div class="stat-box blue"><div class="stat-emoji">👁️</div><div class="stat-value">${watchlist.length}</div><div class="stat-label">Watching</div></div>
+                    <div class="stat-box amber"><div class="stat-emoji">🔔</div><div class="stat-value">${withDrops}</div><div class="stat-label">Price Drops</div></div>
+                    <div class="stat-box green"><div class="stat-emoji">💰</div><div class="stat-value">${fc(totalSavings)}</div><div class="stat-label">Total Saved</div></div>
+                    <div class="stat-box pink"><div class="stat-emoji">🛍️</div><div class="stat-value">${fc(totalValue)}</div><div class="stat-label">Portfolio Value</div></div>`;
+                
+                watchlist.forEach(item => {
+                    const folder = item.folder || "My Wishlist";
+                    if (!folders[folder]) folders[folder] = [];
+                    folders[folder].push(item);
+                });
+            } else {
                 document.getElementById("emptyState").style.display = "block";
-                return;
             }
 
-            // Stats
-            const totalSavings = watchlist.reduce((t, i) => t + Math.max(0, (i.previousPrice||i.currentPrice) - i.currentPrice), 0);
-            const withDrops    = watchlist.filter(i => i.priceDrops?.length > 0).length;
-            const totalValue   = watchlist.reduce((t, i) => t + (i.currentPrice || 0), 0);
-            const lowestItem   = watchlist.reduce((a, b) => (a.currentPrice || 0) < (b.currentPrice || 0) ? a : b);
-
-            document.getElementById("statsContainer").style.display = "grid";
-            document.getElementById("statsContainer").innerHTML = `
-                <div class="stat-box blue"><div class="stat-emoji">👁️</div><div class="stat-value">${watchlist.length}</div><div class="stat-label">Watching</div></div>
-                <div class="stat-box amber"><div class="stat-emoji">🔔</div><div class="stat-value">${withDrops}</div><div class="stat-label">Price Drops</div></div>
-                <div class="stat-box green"><div class="stat-emoji">💰</div><div class="stat-value">${fc(totalSavings)}</div><div class="stat-label">Total Saved</div></div>
-                <div class="stat-box pink"><div class="stat-emoji">🛍️</div><div class="stat-value">${fc(totalValue)}</div><div class="stat-label">Portfolio Value</div></div>`;
-
-            // ── Smart Wishlist Folders
-            const folders = {};
-            watchlist.forEach(item => {
-                const folder = item.folder || "My Wishlist";
-                if (!folders[folder]) folders[folder] = [];
-                folders[folder].push(item);
-            });
             window._watchlistFolders = folders;
-            window._activeFolder = Object.keys(folders)[0];
+            // Keep active folder if it still exists, otherwise default
+            if (!window._activeFolder || !folders[window._activeFolder]) {
+                window._activeFolder = Object.keys(folders)[0];
+            }
 
             renderFolderBar();
             renderFolderGrid(window._activeFolder);
@@ -302,12 +314,18 @@
     function renderFolderGrid(folderName) {
         const items = (window._watchlistFolders || {})[folderName] || [];
         const grid = document.getElementById("folderGrid");
-        grid.innerHTML = items.map(item => createCard(item)).join("");
-        // attach remove buttons + render charts
-        items.forEach(item => {
-            renderChart(item);
-            document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => showConfirm(() => removeItem(item._id)));
-        });
+        if (items.length === 0) {
+            grid.innerHTML = "";
+            document.getElementById("emptyState").style.display = "block";
+        } else {
+            document.getElementById("emptyState").style.display = "none";
+            grid.innerHTML = items.map(item => createCard(item)).join("");
+            // attach remove buttons + render charts
+            items.forEach(item => {
+                renderChart(item);
+                document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => showConfirm(() => removeItem(item._id)));
+            });
+        }
     }
 
     function switchFolder(name, btn) {
@@ -329,18 +347,32 @@
         document.getElementById("folderModal").style.display = "none";
     }
 
-    function confirmCreateFolder() {
+    async function confirmCreateFolder() {
         const name = document.getElementById("folderNameInput").value.trim();
         if (!name) { toast("Please enter a folder name.", "error"); return; }
         const folders = window._watchlistFolders || {};
         if (folders[name]) { toast("A folder with this name already exists!", "error"); return; }
-        folders[name] = [];
-        window._watchlistFolders = folders;
-        window._activeFolder = name;
-        renderFolderBar();
-        renderFolderGrid(name);
-        closeFolderModal();
-        toast(`📁 Folder "${name}" created! Items added to watchlist will be assignable to it.`, "success");
+        
+        const username = sessionStorage.getItem("loggedUser");
+        if (!username) return;
+
+        try {
+            await fetch(`${API_BASE}/folders`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, folderName: name })
+            });
+            
+            folders[name] = [];
+            window._watchlistFolders = folders;
+            window._activeFolder = name;
+            renderFolderBar();
+            renderFolderGrid(name);
+            closeFolderModal();
+            toast(`📁 Folder "${name}" created! Items added to watchlist will be assignable to it.`, "success");
+        } catch (err) {
+            toast("Failed to save folder", "error");
+        }
     }
 
     function createCard(item) {
