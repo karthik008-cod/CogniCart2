@@ -343,6 +343,32 @@
       return "/api";
     })();
 
+    // ─── DYNAMIC TAGLINES & PLACEHOLDERS ─────────────────────────────────────
+    const slogans = [
+      "What are you hunting for today?",
+      "Search beyond the ordinary.",
+      "Go on—find something amazing.",
+      "One search away from your next favorite.",
+      "Let the search begin…",
+      "Find it before anyone else does.",
+      "Name it—we’ll find it.",
+      "Got something in mind?"
+    ];
+
+    function randomizeHero() {
+      const heroTagline = document.getElementById("heroTagline");
+      const searchInput = document.getElementById("item");
+      
+      const randomSlogan = slogans[Math.floor(Math.random() * slogans.length)];
+      // Ensure placeholder is different from tagline if possible
+      let randomPlaceholder = slogans[Math.floor(Math.random() * slogans.length)];
+      
+      if (heroTagline) heroTagline.innerText = randomSlogan;
+      if (searchInput) searchInput.placeholder = randomPlaceholder;
+    }
+
+    randomizeHero();
+
     // ─── GLOBAL STATE ────────────────────────────────────────────────────────
     let amazonData   = [];
     let flipkartData = [];
