@@ -101,6 +101,7 @@
         background: linear-gradient(135deg, var(--accent), #f97316);
         color: white; border-color: transparent; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
       }
+      option { background: var(--surface); color: var(--text-main); }
     </style>
   </head>
   <body>
@@ -117,7 +118,7 @@
     <div class="hero-search reveal active">
       <h1 id="heroTagline">Compare Instantly. Save Massively.</h1>
       <div style="position: relative; width: 100%; max-width: 600px; margin: 0 auto; margin-bottom: 25px;">
-        <input id="item" placeholder="Search anything (fridge / iphone / apple fruit)"
+        <input id="item" autocomplete="off" placeholder="Search anything (fridge / iphone / apple fruit)"
                onkeydown="handleSearchKey(event)" style="width: 100%; padding-right: 90px; margin-bottom: 0;" />
         <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px;">
           <button onclick="startVoiceSearch()" title="Voice Search" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-main);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">🎤</button>

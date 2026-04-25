@@ -1181,6 +1181,29 @@ router.get("/folders/:username", async (req, res) => {
   }
 });
 
+// Rename folder
+router.put("/folders/rename", async (req, res) => {
+  const { username, oldName, newName } = req.body;
+  if (!username || !oldName || !newName) return res.status(400).json({ message: "Missing fields" });
+  try {
+    const db = await connectDB();
+    // update folder collection
+    await db.collection("user_folders").updateOne(
+      { username, folderName: oldName },
+      { $set: { folderName: newName } }
+    );
+    // update items in watchlist collection
+    await db.collection("watchlist").updateMany(
+      { username, folder: oldName },
+      { $set: { folder: newName } }
+    );
+    res.json({ message: "Folder renamed successfully" });
+  } catch (err) {
+    console.error("Rename folder error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Remove product from watchlist
 router.delete("/watchlist/:watchlistId", async (req, res) => {
   try {
