@@ -246,43 +246,23 @@
       </div>
     </div>
 
-    <!-- Payment Modal -->
-    <div id="paymentModal" class="modal">
-      <div class="modal-content reveal-modal" style="max-width:480px;padding:36px 32px;gap:0">
+    <!-- Aggregator Checkout Modal -->
+    <div id="aggregatorCheckoutModal" class="modal">
+      <div class="modal-content reveal-modal" style="max-width:540px;padding:36px 32px;gap:0">
         <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div>
-            <h3 style="font-size:1.45rem;margin-bottom:4px">Secure Checkout</h3>
-            <p style="color:var(--text-muted);font-size:0.82rem;margin:0">🔒 256-bit SSL encrypted payment</p>
+            <h3 style="font-size:1.45rem;margin-bottom:4px">Checkout</h3>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin:0">Complete your purchases on the original retailer websites</p>
           </div>
-          <span onclick="closeModal('paymentModal')" style="cursor:pointer;color:var(--text-muted);font-size:1.3rem;line-height:1;padding:4px 8px;border-radius:8px;transition:0.2s" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">✕</span>
+          <span onclick="closeModal('aggregatorCheckoutModal')" style="cursor:pointer;color:var(--text-muted);font-size:1.3rem;line-height:1;padding:4px 8px;border-radius:8px;transition:0.2s" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">✕</span>
         </div>
 
-        <!-- Order total strip -->
-        <div id="payOrderTotal" style="background:rgba(124,109,247,0.08);border:1px solid rgba(124,109,247,0.2);border-radius:14px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
-          <span style="color:var(--text-muted);font-size:0.88rem">Order Total</span>
-          <span style="font-size:1.25rem;font-weight:700;color:var(--primary)">₹—</span>
+        <div id="checkoutItemList" style="max-height: 350px; overflow-y: auto; margin-top: 15px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px; padding-right: 5px;">
+          <!-- Render items grouped by store here -->
         </div>
 
-        <!-- Payment Methods Selection -->
-        <div id="payStep1">
-          <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(124,109,247,0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(124,109,247,0.2);">
-            <span style="font-size:0.9rem; font-weight:600; color:var(--text-main);">Apply to all items:</span>
-            <select id="globalPayMethod" onchange="applyGlobalPayMethod(this.value)" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--primary); background: var(--glass-bg); color: var(--text-main); outline: none;">
-              <option value="">Select Method...</option>
-              <option value="UPI">📱 UPI</option>
-              <option value="Card">💳 Card</option>
-              <option value="COD">🏠 Cash on Delivery</option>
-            </select>
-          </div>
-
-          <div id="payItemList" style="max-height: 280px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
-            <!-- Render items here -->
-          </div>
-
-          <button id="multiPlaceOrderBtn" class="glow-btn" onclick="confirmMultiPayment()" style="width:100%;padding:14px;font-size:1.05rem;">Place Order 🔒</button>
-        </div>
-
+        <button id="finishCheckoutBtn" class="glow-btn" onclick="finishAggregatorCheckout()" style="width:100%;padding:14px;font-size:1.05rem;">✅ Log as Purchased & Clear Cart</button>
       </div>
     </div>
 
@@ -1331,59 +1311,83 @@
 
     // ─── ORDERS & HISTORY ────────────────────────────────────────────────────
     function placeOrder() {
-      openPaymentModal();
+      openAggregatorCheckout();
     }
 
-    // ─── PAYMENT METHOD SELECTION ────────────────────────────────────────────
-    function openPaymentModal() {
+    function openAggregatorCheckout() {
       const items = window.currentCartItems || [];
       if (!items.length) {
         toast("Your cart is empty", "error");
         return;
       }
 
-      // Compute current cart total for display
-      const total = items.reduce((s, p) => s + (parseInt(p.price || 0) * p.qty), 0);
-      const el = document.getElementById("payOrderTotal");
-      if (el) el.querySelector("span:last-child").textContent = "₹" + total.toLocaleString("en-IN");
-
-      // Render items list
-      const payItemList = document.getElementById("payItemList");
-      payItemList.innerHTML = items.map((p, i) => `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--glass-bg); padding:10px 14px; border-radius:12px; border:1px solid var(--glass-border);">
-          <div style="flex:1; min-width:0; margin-right:12px; text-align:left;">
-            <p style="font-size:0.9rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main); margin-bottom:4px;">${p.title}</p>
-            <p style="font-size:0.8rem; color:var(--text-muted)">Qty: <strong style="color:var(--text-main)">${p.qty}</strong> <span style="margin:0 6px">•</span> <strong style="color:var(--success)">₹${(parseInt(p.price) * p.qty).toLocaleString('en-IN')}</strong></p>
-          </div>
-          <select class="item-pay-method" data-index="${i}" style="width:130px; padding:6px 8px; font-size:0.85rem; border-radius:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:var(--text-main); outline:none; cursor:pointer;">
-            <option value="UPI">📱 UPI</option>
-            <option value="Card">💳 Card</option>
-            <option value="COD">🏠 COD</option>
-          </select>
-        </div>
-      `).join("");
-
-      document.getElementById("globalPayMethod").value = "";
-      document.getElementById("paymentModal").style.display = "flex";
-    }
-
-    function applyGlobalPayMethod(val) {
-      if (!val) return;
-      document.querySelectorAll(".item-pay-method").forEach(sel => {
-        sel.value = val;
+      // Group items by store
+      const byStore = {};
+      items.forEach((p, i) => {
+        const s = p.store || "Other Stores";
+        if (!byStore[s]) byStore[s] = [];
+        byStore[s].push({ ...p, originalIndex: i });
       });
+
+      const listEl = document.getElementById("checkoutItemList");
+      listEl.innerHTML = "";
+
+      for (const [store, storeItems] of Object.entries(byStore)) {
+        const storeTotal = storeItems.reduce((s, p) => s + (parseInt(p.price) * p.qty), 0);
+        
+        let html = `
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:12px; padding:16px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+              <h4 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:8px;">
+                <span style="background:var(--primary); width:10px; height:10px; border-radius:50%; display:inline-block;"></span>
+                ${store}
+              </h4>
+              <span style="font-weight:600; color:var(--primary-light)">Total: ₹${storeTotal.toLocaleString('en-IN')}</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+        `;
+
+        storeItems.forEach(p => {
+          html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                <img src="${p.image}" style="width:36px; height:36px; border-radius:6px; object-fit:cover;">
+                <div style="flex:1; min-width:0;">
+                  <p style="margin:0; font-size:0.85rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.title}</p>
+                  <p style="margin:0; font-size:0.75rem; color:var(--text-muted)">Qty: ${p.qty} • ₹${(parseInt(p.price)*p.qty).toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+              <button onclick="openStoreLink('${p.link}', this)" style="background:linear-gradient(135deg, var(--accent), #f97316); border:none; border-radius:8px; padding:6px 12px; font-size:0.8rem; font-weight:600; cursor:pointer; color:white; flex-shrink:0;">
+                Buy on ${store} ↗
+              </button>
+            </div>
+          `;
+        });
+
+        html += `</div></div>`;
+        listEl.insertAdjacentHTML("beforeend", html);
+      }
+
+      document.getElementById("aggregatorCheckoutModal").style.display = "flex";
     }
 
-    async function confirmMultiPayment() {
+    function openStoreLink(link, btnElement) {
+      if (link && link !== "#" && link !== "null") {
+        window.open(link, '_blank', 'noopener,noreferrer');
+      }
+      btnElement.textContent = "✅ Redirected";
+      btnElement.style.background = "var(--success)";
+      btnElement.disabled = true;
+    }
+
+    async function finishAggregatorCheckout() {
       const items = window.currentCartItems || [];
-      const selects = document.querySelectorAll(".item-pay-method");
-      
-      const orderItems = items.map((p, i) => ({
+      const orderItems = items.map(p => ({
         ...p,
-        paymentMethod: selects[i].value
+        paymentMethod: "Store Checkout"
       }));
 
-      const payBtn = document.getElementById("multiPlaceOrderBtn");
+      const payBtn = document.getElementById("finishCheckoutBtn");
       if (payBtn) { payBtn.disabled = true; payBtn.textContent = "Processing…"; }
 
       try {
@@ -1394,63 +1398,22 @@
           body:    JSON.stringify({ username, orderItems }),
         });
         const data = await res.json();
-        closeModal("paymentModal");
+        closeModal("aggregatorCheckoutModal");
 
         // Clear local cart items to reflect backend clear
         window.currentCartItems = [];
 
-        // Show success overlay with clickable product links
-        const linksHtml = orderItems
-          .filter(p => p.link && p.link !== "#")
-          .map(p => `
-            <a href="${p.link}" target="_blank" rel="noopener noreferrer"
-               style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.05);
-                      border:1px solid var(--glass-border);border-radius:14px;padding:14px 18px;
-                      text-decoration:none;color:var(--text-main);transition:all 0.2s"
-               onmouseover="this.style.background='rgba(124,109,247,0.12)';this.style.borderColor='var(--primary)'"
-               onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='var(--glass-border)'">
-              <img src="${p.image}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:10px;flex-shrink:0">
-              <div style="flex:1;min-width:0">
-                <p style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">${p.title}</p>
-                <p style="font-size:0.8rem;color:var(--text-muted)">${p.store || 'Store'} · ${p.paymentMethod}</p>
-              </div>
-              <span style="color:var(--primary);font-size:1.2rem;flex-shrink:0">↗</span>
-            </a>
-          `).join("");
-
-        document.getElementById("orders").style.display = "block";
-        document.getElementById("orders").innerHTML = `
-          <div style="max-width:600px;margin:0 auto;padding:30px 20px;text-align:center">
-            <div style="font-size:4rem;margin-bottom:12px;animation:float 2s ease-in-out infinite">🎉</div>
-            <h3 style="font-size:1.6rem;margin-bottom:6px;color:var(--text-main)">Order Placed Successfully!</h3>
-            <p style="color:var(--text-muted);margin-bottom:28px;font-size:0.95rem">${data.message || 'Your order has been confirmed.'}</p>
-
-            ${linksHtml ? `
-              <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px;text-align:left;font-weight:600">
-                🛍️ Visit your product pages:
-              </p>
-              <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
-                ${linksHtml}
-              </div>
-            ` : ''}
-
-            <button class="glow-btn" onclick="showSection('orders')" style="width:100%;padding:14px">
-              📦 View My Orders
-            </button>
-          </div>
-        `;
-
-        // Hide other sections
-        document.querySelector(".hero-search").style.display = "none";
-        document.getElementById("storesSection").style.display = "none";
-        document.getElementById("aiBox").style.display = "none";
-        document.getElementById("cart").style.display = "none";
-        document.getElementById("history").style.display = "none";
+        // Show success toast and load orders section
+        toast("Purchases logged successfully! 🎉", "success");
+        setTimeout(() => {
+          showSection('orders');
+        }, 1500);
 
       } catch (err) {
-        console.error("Order error:", err);
-        toast("Payment failed. Please try again.", "error");
-        if (payBtn) { payBtn.disabled = false; payBtn.textContent = "Place Order 🔒"; }
+        console.error(err);
+        toast("Failed to log purchase", "error");
+      } finally {
+        if (payBtn) { payBtn.disabled = false; payBtn.textContent = "✅ Log as Purchased & Clear Cart"; }
       }
     }
 
