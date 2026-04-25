@@ -23,6 +23,7 @@
     "bare-stream": "^2.8.0",
     "bare-url": "^2.3.2",
     "basic-ftp": "^5.2.0",
+    "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",
     "brace-expansion": "^1.1.12",
     "buffer-crc32": "^0.2.13",

@@ -8,6 +8,8 @@ const { MongoClient } = require("mongodb");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
+const bcrypt = require("bcryptjs");
+
 
 // The router handles all /api/* logic.
 // Local: script.js mounts it at app.use('/api', router)
@@ -185,22 +187,78 @@ router.post("/verify-otp", async (req, res) => {
     const usersCollection = database.collection("users");
     const user = await usersCollection.findOne(
       { username },
-      { projection: { _id: 1 } },
+      { projection: { _id: 1, password: 1 } }
     );
+    
     if (!user) {
-      await usersCollection.insertOne({
-        username,
-        cart: [],
-        orders: [],
-        history: [],
-      });
+      // For new users, we'll return that they need to set a password
+      return res.json({ success: true, message: "OTP verified. Please set your password.", isNewUser: true });
     }
-    res.json({ success: true, message: "Login successful" });
+    
+    res.json({ success: true, message: "Login successful", isNewUser: false });
   } catch (err) {
     console.error("Verify OTP DB error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+router.post("/check-user", async (req, res) => {
+  const { username } = req.body;
+  try {
+    const database = await connectDB();
+    const user = await database.collection("users").findOne({ username }, { projection: { password: 1 } });
+    if (!user) {
+      return res.json({ exists: false });
+    }
+    res.json({ exists: true, hasPassword: !!user.password });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/set-password", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const database = await connectDB();
+    const usersCollection = database.collection("users");
+    
+    // Update or Insert
+    await usersCollection.updateOne(
+      { username },
+      { 
+        $set: { password: hashedPassword },
+        $setOnInsert: { cart: [], orders: [], history: [] }
+      },
+      { upsert: true }
+    );
+    
+    res.json({ success: true, message: "Password set successfully. You are now registered!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.post("/login-password", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const database = await connectDB();
+    const user = await database.collection("users").findOne({ username });
+    if (!user || !user.password) {
+      return res.json({ success: false, message: "User not found or password not set" });
+    }
+    
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.json({ success: false, message: "Incorrect password" });
+    }
+    
+    res.json({ success: true, message: "Login successful" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 
 // ─── 4. SCRAPERS ─────────────────────────────────────────────────────────────
 
