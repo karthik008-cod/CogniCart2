@@ -53,8 +53,11 @@ async function connectDB() {
   }
 }
 
+// Helper: read env var and strip any trailing whitespace/newlines (Windows Vercel CLI injects \n)
+function env(key) { return (process.env[key] || "").trim(); }
+
 const emailClient = SibApiV3Sdk.ApiClient.instance;
-emailClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
+emailClient.authentications["api-key"].apiKey = env("BREVO_API_KEY");
 const emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 // ─── 2. IN-MEMORY CACHE ──────────────────────────────────────────────────────
@@ -311,7 +314,7 @@ function cleanProductLink(link) {
 // 1. AMAZON (Powered by ScraperAPI)
 async function scrapeAmazon(query, page = 1) {
   try {
-    const apiKey = process.env.SCRAPER_API_KEY;
+    const apiKey = env("SCRAPER_API_KEY");
     if (!apiKey) return [];
 
     const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}${page > 1 ? `&page=${page}` : ""}`;
@@ -356,7 +359,7 @@ async function scrapeAmazon(query, page = 1) {
 // 2. FLIPKART (Powered by ScraperAPI)
 async function scrapeFlipkart(query, page = 1) {
   try {
-    const apiKey = process.env.SCRAPER_API_KEY;
+    const apiKey = env("SCRAPER_API_KEY");
     if (!apiKey) return [];
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}${page > 1 ? `&page=${page}` : ""}`;
@@ -413,7 +416,7 @@ async function scrapeGoogle(query, page = 1) {
 
   // ── STRATEGY 1: SerpAPI (most reliable, 100 free/month) ──────────────────
   // Sign up free at https://serpapi.com and paste the key into your .env as SERPAPI_KEY
-  const serpKey = process.env.SERPAPI_KEY;
+  const serpKey = env("SERPAPI_KEY");
   if (serpKey) {
     try {
       const { data } = await axios.get("https://serpapi.com/search.json", {
@@ -459,7 +462,7 @@ async function scrapeGoogle(query, page = 1) {
 
   // ── STRATEGY 2: ScraperAPI structured data endpoint ──────────────────────
   // This dedicated endpoint returns clean JSON without HTML parsing overhead.
-  const scraperKey = process.env.SCRAPER_API_KEY;
+  const scraperKey = env("SCRAPER_API_KEY");
   if (scraperKey) {
     try {
       const { data } = await axios.get(
@@ -857,6 +860,8 @@ router.post("/ai-recommendation", async (req, res) => {
     `CRITICAL RULE: At the very end of your response, you MUST append the ID of the chosen product exactly like this: |ID:X| (where X is the number from the 'id' field of the chosen product).`;
 
   try {
+    const groqKey = env("GROQ_API_KEY");
+    if (!groqKey) throw new Error("GROQ_API_KEY not set");
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -865,7 +870,7 @@ router.post("/ai-recommendation", async (req, res) => {
         max_tokens: 200,
       },
       {
-        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+        headers: { Authorization: `Bearer ${groqKey}` },
         timeout: 15000,
       },
     );
