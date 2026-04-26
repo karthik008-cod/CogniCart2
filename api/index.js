@@ -25,7 +25,7 @@ router.use(express.json());
 
 // ─── 1. CLOUD SERVICES SETUP ────────────────────────────────────────────────
 
-const mongoUri = process.env.MONGODB_URI;
+const mongoUri = process.env.MONGODB_URI ? process.env.MONGODB_URI.trim() : "";
 if (!mongoUri) {
   console.warn("WARNING: MONGODB_URI is not set. DB-dependent routes will fail.");
 }
@@ -968,7 +968,7 @@ router.post("/chatbot", async (req, res) => {
         temperature: 0.7,
       },
       {
-        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+        headers: { Authorization: `Bearer ${env("GROQ_API_KEY")}` },
         timeout: 20000,
       },
     );
@@ -1003,7 +1003,7 @@ router.post("/vision-search", upload.single("image"), async (req, res) => {
           ],
           max_tokens: 20
         },
-        { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 10000 }
+        { headers: { Authorization: `Bearer ${env("GROQ_API_KEY")}` }, timeout: 10000 }
       );
       
       const query = response.data.choices[0].message.content.replace(/['"]/g, "").trim();
@@ -1041,7 +1041,7 @@ Then write 2 sentences summarizing which one to pick and why. Be specific, conci
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       { model: "llama-3.3-70b-versatile", messages: [{ role: "user", content: prompt }], max_tokens: 600 },
-      { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 20000 }
+      { headers: { Authorization: `Bearer ${env("GROQ_API_KEY")}` }, timeout: 20000 }
     );
     res.json({ comparison: response.data.choices[0].message.content.trim() });
   } catch (err) {
