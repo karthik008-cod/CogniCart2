@@ -980,48 +980,7 @@ router.post("/chatbot", async (req, res) => {
   }
 });
 
-router.post("/vision-search", upload.single("image"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ message: "No image uploaded" });
-  
-  try {
-    const base64Image = req.file.buffer.toString('base64');
-    const dataUri = `data:${req.file.mimetype};base64,${base64Image}`;
-    
-    try {
-      const response = await axios.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          model: "llama-3.2-11b-vision-preview",
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "You are a product identifier. Look at this image and output ONLY a 2-4 word e-commerce search query for the main product (e.g. Nike Running Shoes). NO conversational text. NO punctuation." },
-                { type: "image_url", image_url: { url: dataUri } }
-              ]
-            }
-          ],
-          max_tokens: 20
-        },
-        { headers: { Authorization: `Bearer ${env("GROQ_API_KEY")}` }, timeout: 10000 }
-      );
-      
-      const query = response.data.choices[0].message.content.replace(/['"]/g, "").trim();
-      return res.json({ query });
-    } catch (apiError) {
-      // Fallback if Vision model isn't available to the API key
-      const originalName = req.file.originalname || "";
-      const baseName = originalName.split('.')[0];
-      const fallbackQuery = baseName.replace(/[-_]/g, " ").replace(/[0-9]/g, "").trim() || "Smartphone";
-      
-      return res.json({ 
-        query: fallbackQuery 
-      });
-    }
-  } catch (e) {
-    res.status(500).json({ message: "Image processing failed." });
-  }
-});
+
 
 // ─── AI SMART COMPARE ────────────────────────────────────────────────────────
 router.post("/ai-compare", async (req, res) => {

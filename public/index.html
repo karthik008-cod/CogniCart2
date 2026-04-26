@@ -153,11 +153,9 @@
       <h1 id="heroTagline">Compare Instantly. Save Massively.</h1>
       <div style="position: relative; width: 100%; max-width: 600px; margin: 0 auto; margin-bottom: 25px;">
         <input id="item" type="search" name="search_query" autocomplete="new-password" placeholder="Search anything"
-               onkeydown="handleSearchKey(event)" style="width: 100%; padding-right: 90px; margin-bottom: 0;" />
-        <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px;">
+               onkeydown="handleSearchKey(event)" style="width: 100%; padding-right: 50px; margin-bottom: 0;" />
+        <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center;">
           <button onclick="startVoiceSearch()" title="Voice Search" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-main);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">🎤</button>
-          <label for="imageUpload" title="Image Search" style="font-size: 1.3rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">📷</label>
-          <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="handleImageSearch(event)">
         </div>
       </div>
       <button type="button" onclick="search()" class="glow-btn">Compare Prices</button>
@@ -559,33 +557,7 @@
       recognition.start();
     }
 
-    async function handleImageSearch(event) {
-      const file = event.target.files[0];
-      if (!file) return;
 
-      const formData = new FormData();
-      formData.append("image", file);
-
-      toast("Analyzing image... 🧠", "info");
-      
-      try {
-        const res = await fetch(`${API_BASE}/vision-search`, {
-          method: "POST",
-          body: formData
-        });
-        const data = await res.json();
-        if (data.query) {
-          // If the query is returned with quotes, strip them
-          const finalQuery = data.query.replace(/['"]/g, "").trim();
-          document.getElementById("item").value = finalQuery;
-          search();
-        } else {
-          toast(data.message || "Could not identify product.", "error");
-        }
-      } catch (e) {
-        toast("Image search failed.", "error");
-      }
-    }
 
     // ─── SEARCH ──────────────────────────────────────────────────────────────
     let currentSearchId = 0;
