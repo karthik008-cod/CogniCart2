@@ -1053,6 +1053,30 @@ router.get("/price-alerts/:username", async (req, res) => {
   }
 });
 
+// POST: immediately check one alert and send email if target reached (on-demand trigger)
+router.post("/trigger-alert/:alertId", async (req, res) => {
+  try {
+    const { ObjectId } = require("mongodb");
+    const db = await connectDB();
+    const alert = await db.collection("price_alerts").findOne({ _id: new ObjectId(req.params.alertId) });
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
+
+    if (alert.currentPrice <= alert.targetPrice) {
+      const sent = await sendTargetPriceEmail(alert.username, alert.product, alert.currentPrice, alert.targetPrice);
+      if (sent) {
+        await db.collection("price_alerts").deleteOne({ _id: alert._id });
+        return res.json({ triggered: true, message: "Email sent and alert removed" });
+      }
+      return res.status(500).json({ triggered: false, message: "Email failed" });
+    }
+    res.json({ triggered: false, message: "Target not yet reached" });
+  } catch (err) {
+    console.error("trigger-alert error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 // DELETE a price alert
 router.delete("/price-alerts/:alertId", async (req, res) => {
   try {

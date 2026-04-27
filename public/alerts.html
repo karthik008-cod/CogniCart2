@@ -268,6 +268,21 @@
         document.getElementById(`save-${a._id}`)?.addEventListener("click", () => updateTarget(a._id));
       });
 
+      // Immediately fire email for any already-reached alerts (don't wait for cron)
+      const reachedAlerts = alerts.filter(a => a.currentPrice <= a.targetPrice);
+      for (const a of reachedAlerts) {
+        fetch(`${API_BASE}/trigger-alert/${a._id}`, { method: "POST" })
+          .then(r => r.json())
+          .then(d => {
+            if (d.triggered) {
+              toast(`Price alert triggered for "${a.product?.title?.substring(0,30)}…" — email sent!`, "success", 5000);
+              // Reload after short delay so the removed card disappears
+              setTimeout(loadAlerts, 2000);
+            }
+          })
+          .catch(() => {});
+      }
+
     } catch (err) {
       document.getElementById("loadingState").style.display = "none";
       toast("Failed to load alerts: " + err.message, "error", 5000);
