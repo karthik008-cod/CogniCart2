@@ -1026,14 +1026,58 @@ router.post("/price-alert", async (req, res) => {
           currentPrice: parseInt(product.price),
           targetPrice: parseInt(targetPrice),
           createdAt: new Date(),
-          notified: false
+          notified: false,
+          priceHistory: [{ price: parseInt(product.price), timestamp: new Date() }]
         }
       },
       { upsert: true }
     );
-    res.json({ message: `🔔 Alert set! We'll email you at ${username} when the price drops below ₹${parseInt(targetPrice).toLocaleString("en-IN")}.` });
+    res.json({ message: `Alert set! We'll mail you at ${username} when the price drops below \u20b9${parseInt(targetPrice).toLocaleString("en-IN")}.` });
   } catch (err) {
     console.error("Price alert error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET all price alerts for a user
+router.get("/price-alerts/:username", async (req, res) => {
+  try {
+    const db = await connectDB();
+    const alerts = await db.collection("price_alerts")
+      .find({ username: req.params.username })
+      .sort({ createdAt: -1 })
+      .toArray();
+    res.json(alerts);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// DELETE a price alert
+router.delete("/price-alerts/:alertId", async (req, res) => {
+  try {
+    const { ObjectId } = require("mongodb");
+    const db = await connectDB();
+    await db.collection("price_alerts").deleteOne({ _id: new ObjectId(req.params.alertId) });
+    res.json({ message: "Alert removed" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// UPDATE target price for an alert
+router.put("/price-alerts/:alertId", async (req, res) => {
+  const { targetPrice } = req.body;
+  if (!targetPrice || isNaN(+targetPrice)) return res.status(400).json({ message: "Invalid target price" });
+  try {
+    const { ObjectId } = require("mongodb");
+    const db = await connectDB();
+    await db.collection("price_alerts").updateOne(
+      { _id: new ObjectId(req.params.alertId) },
+      { $set: { targetPrice: parseInt(targetPrice), notified: false } }
+    );
+    res.json({ message: "Target price updated" });
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -1444,12 +1488,125 @@ router.get("/check-prices", async (req, res) => {
   }
   try {
     await monitorPricesScheduled();
+    await checkPriceAlerts();  // Also check price_alerts
     res.json({ ok: true, message: "Price check completed" });
   } catch (err) {
     console.error("[check-prices] Error:", err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+// ─── CHECK PRICE ALERTS (target-price crossing) ────────────────────────────────
+async function checkPriceAlerts() {
+  try {
+    const db = await connectDB();
+    const alerts = await db.collection("price_alerts").find({ notified: false }).toArray();
+    console.log(`[PRICE ALERTS] Checking ${alerts.length} alerts...`);
+
+    for (const alert of alerts) {
+      try {
+        // Re-fetch current price by searching for the product
+        const searchResults = await Promise.all([
+          scrapeAmazon(alert.product.title),
+          scrapeFlipkart(alert.product.title),
+        ]);
+        let livePrice = null;
+        for (const results of searchResults) {
+          if (results[0] && results[0].price) { livePrice = parseInt(results[0].price); break; }
+        }
+        if (!livePrice) continue;
+
+        // Add to price history
+        const newHistory = [...(alert.priceHistory || [{ price: alert.currentPrice, timestamp: new Date() }]), { price: livePrice, timestamp: new Date() }];
+
+        await db.collection("price_alerts").updateOne(
+          { _id: alert._id },
+          { $set: { currentPrice: livePrice, priceHistory: newHistory } }
+        );
+
+        // Check if target reached
+        if (livePrice <= alert.targetPrice) {
+          const emailSent = await sendTargetPriceEmail(alert.username, alert.product, livePrice, alert.targetPrice);
+          if (emailSent) {
+            await db.collection("price_alerts").updateOne(
+              { _id: alert._id },
+              { $set: { notified: true, notifiedAt: new Date() } }
+            );
+            console.log(`[PRICE ALERT] Notified ${alert.username} — ${alert.product.title} hit target \u20b9${alert.targetPrice}`);
+          }
+        }
+      } catch (e) {
+        console.error(`[PRICE ALERTS] Error checking alert ${alert._id}:`, e.message);
+      }
+    }
+  } catch (err) {
+    console.error("[PRICE ALERTS] Fatal error:", err);
+  }
+}
+
+// Helper: Send target price reached email
+async function sendTargetPriceEmail(username, product, currentPrice, targetPrice) {
+  try {
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 20px">
+  <tr><td align="center">
+  <table width="560" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1e1b4b,#0f2027);border-radius:24px;overflow:hidden;border:1px solid rgba(99,102,241,0.3);box-shadow:0 32px 80px rgba(0,0,0,0.5)">
+    <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:32px 40px;text-align:center">
+      <div style="font-size:3rem;margin-bottom:8px">🎯</div>
+      <h1 style="margin:0;color:#fff;font-size:1.6rem;font-weight:900">Target Price Reached!</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:0.9rem">The price you were waiting for is here.</p>
+    </td></tr>
+    <tr><td style="padding:32px 40px">
+      <p style="margin:0 0 20px;color:#a5b4fc;font-size:0.9rem">Hi <strong style="color:#fff">${username.split('@')[0]}</strong>! Great news — a product you set an alert for has hit your target price.</p>
+      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;margin-bottom:24px">
+        ${product.image ? `<img src="${product.image}" alt="" style="width:80px;height:80px;object-fit:contain;border-radius:12px;background:rgba(255,255,255,0.05);float:right;margin-left:16px">` : ''}
+        <p style="margin:0 0 6px;color:#818cf8;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.5px">${product.store || 'Store'}</p>
+        <h3 style="margin:0 0 16px;color:#fff;font-size:1rem;line-height:1.5">${product.title}</h3>
+        <div style="clear:both"></div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="text-align:center;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:14px">
+              <p style="margin:0 0 4px;color:#fca5a5;font-size:0.7rem;text-transform:uppercase">Your Target</p>
+              <p style="margin:0;font-size:1.6rem;font-weight:800;color:#f87171">\u20b9${targetPrice.toLocaleString('en-IN')}</p>
+            </td>
+            <td style="text-align:center;padding:0 12px;color:#a5b4fc;font-size:1.5rem">\u2192</td>
+            <td style="text-align:center;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:14px">
+              <p style="margin:0 0 4px;color:#6ee7b7;font-size:0.7rem;text-transform:uppercase">Current Price</p>
+              <p style="margin:0;font-size:1.6rem;font-weight:900;color:#34d399">\u20b9${currentPrice.toLocaleString('en-IN')}</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div style="text-align:center;margin-bottom:28px">
+        <a href="https://cognitive-cart2.vercel.app/alerts.html" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:15px 36px;border-radius:12px;text-decoration:none;font-weight:800;font-size:1rem;box-shadow:0 8px 24px rgba(79,70,229,0.4)">View My Alerts &#8594;</a>
+      </div>
+      <p style="margin:0;color:#4b5563;font-size:0.8rem;text-align:center">You're receiving this because you set a price alert on CogniCart.</p>
+    </td></tr>
+    <tr><td style="padding:16px 40px 28px;border-top:1px solid rgba(255,255,255,0.05)">
+      <p style="margin:0;color:#374151;font-size:0.72rem;text-align:center">&#169; CogniCart &middot; ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST</p>
+    </td></tr>
+  </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+    await emailApi.sendTransacEmail({
+      sender: { email: "aakasltf06@gmail.com", name: "CogniCart" },
+      to: [{ email: username, name: username.split("@")[0] }],
+      subject: `\ud83c\udfaf Price Alert: "${product.title.substring(0, 40)}" is now \u20b9${currentPrice.toLocaleString('en-IN')}!`,
+      htmlContent,
+    });
+    return true;
+  } catch (err) {
+    console.error("Target price email error:", err?.response?.body || err.message);
+    return false;
+  }
+}
 
 // Export the router so script.js can mount it at /api
 module.exports = router;

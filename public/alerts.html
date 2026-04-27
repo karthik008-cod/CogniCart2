@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Price Alerts - CogniCart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #080e1c; --surface: #111827; --surface2: #1a2235;
+      --border: rgba(255,255,255,0.07); --accent: #6366f1; --accent2: #8b5cf6;
+      --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+      --text: #f1f5f9; --text-muted: #64748b; --radius: 16px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; }
+
+    #toast-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
+    .toast { padding: 13px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); color: var(--text); backdrop-filter: blur(12px); transform: translateX(120%); opacity: 0; transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.35s; pointer-events: none; max-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+    .toast.show { transform: translateX(0); opacity: 1; }
+    .toast.success { border-color: var(--success); color: var(--success); }
+    .toast.error   { border-color: var(--danger);  color: var(--danger); }
+    .toast.info    { border-color: var(--accent);  color: #a5b4fc; }
+
+    nav { background: rgba(8,14,28,0.85); backdrop-filter: blur(16px); padding: 1rem 2.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    nav h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+    nav h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; color: transparent; }
+    .nav-links { display: flex; gap: 6px; align-items: center; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; transition: background 0.2s, color 0.2s; }
+    .nav-links a:hover { background: var(--surface2); color: var(--text); }
+    .nav-links a.active { background: var(--accent); color: #fff; }
+    .nav-pill { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 20px !important; color: var(--text) !important; }
+
+    .page-wrap { max-width: 1200px; margin: 0 auto; padding: 36px 24px; }
+    .page-header { margin-bottom: 32px; }
+    .page-header h2 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .page-header p  { color: var(--text-muted); font-size: 0.9rem; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+    .stat-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-box.blue::before   { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+    .stat-box.amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .stat-box.green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+    .stat-box.red::before    { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .stat-box:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
+    .stat-value { font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; }
+
+    .alerts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 24px; }
+
+    .alert-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
+    .alert-card:hover { transform: translateY(-4px); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .alert-card.reached { border-color: rgba(16,185,129,0.35); }
+    .alert-card.notified { border-color: rgba(99,102,241,0.3); opacity: 0.8; }
+
+    .card-img { width: 100%; height: 200px; background: linear-gradient(135deg, #111827, #1a2235); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .card-img img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.4s; }
+    .alert-card:hover .card-img img { transform: scale(1.05); }
+    .store-badge { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 8px; }
+    .status-badge { position: absolute; top: 12px; right: 12px; font-size: 0.72rem; font-weight: 700; padding: 5px 10px; border-radius: 8px; letter-spacing: 0.3px; }
+    .status-badge.active   { background: rgba(99,102,241,0.85); color: #fff; }
+    .status-badge.reached  { background: rgba(16,185,129,0.9); color: #fff; }
+    .status-badge.notified { background: rgba(245,158,11,0.85); color: #fff; }
+
+    .card-body { padding: 20px; }
+    .product-title { font-size: 0.93rem; font-weight: 600; color: var(--text); margin-bottom: 14px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .price-comparison { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .price-item { background: var(--surface2); border-radius: 12px; padding: 12px 10px; text-align: center; border: 1px solid var(--border); }
+    .price-item.target { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); }
+    .price-item.current { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.05); }
+    .price-item.reached-price { border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.08); }
+    .price-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+    .price-value { font-size: 1.1rem; font-weight: 800; }
+    .price-value.danger { color: #f87171; }
+    .price-value.accent { color: #a5b4fc; }
+    .price-value.success { color: #34d399; }
+
+    .chart-section { background: var(--surface2); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    .chart-section h4 { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+    .chart-container { position: relative; height: 85px; }
+
+    .edit-target { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .edit-target input { flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.06); color: var(--text); font-size: 0.88rem; outline: none; transition: border-color 0.2s; }
+    .edit-target input:focus { border-color: var(--accent); }
+    .edit-target button { padding: 9px 16px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.15s; white-space: nowrap; }
+    .edit-target button:hover { opacity: 0.85; transform: scale(0.97); }
+
+    .card-actions { display: flex; gap: 8px; }
+    .card-actions button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-weight: 700; font-size: 0.83rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
+    .card-actions button:hover { opacity: 0.85; transform: scale(0.98); }
+    .btn-remove { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25) !important; }
+    .btn-buy    { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; }
+
+    .empty-state { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 70px 24px; text-align: center; display: none; }
+    .empty-state h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 10px; }
+    .empty-state p  { color: var(--text-muted); margin-bottom: 28px; font-size: 0.9rem; line-height: 1.6; }
+    .btn-primary { display: inline-block; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; padding: 13px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.9rem; transition: opacity 0.2s, transform 0.15s; }
+    .btn-primary:hover { opacity: 0.85; transform: scale(0.98); }
+
+    #loadingState { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+    .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    option { background: var(--surface); color: var(--text); }
+    @media (max-width: 640px) { .alerts-grid { grid-template-columns: 1fr; } nav { flex-direction: column; gap: 12px; padding: 1rem; } .page-wrap { padding: 20px 14px; } .price-comparison { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<nav>
+  <a href="index.html" style="text-decoration:none; color:inherit; display:flex; align-items:center;">
+    <h1 style="cursor:pointer">&#x1F6D2; Cogni <span>Cart</span></h1>
+  </a>
+  <div class="nav-links" id="navLinks">
+    <a href="watchlist.html">Watchlist</a>
+    <a href="alerts.html" class="active">Alerts</a>
+    <a href="#" id="logoutBtn">Logout</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <h2>Price Alerts</h2>
+    <p>We'll email you the moment any product drops below your target price.</p>
+  </div>
+
+  <div id="loadingState"><div class="spinner"></div><p>Loading your alerts…</p></div>
+  <div id="statsContainer" class="stats" style="display:none"></div>
+  <div id="alertsGrid" class="alerts-grid"></div>
+  <div id="emptyState" class="empty-state">
+    <h3>No Alerts Set</h3>
+    <p>Search for products and click the Alert button to get notified when the price drops below your target.</p>
+    <a href="index.html" class="btn-primary">Find Products</a>
+  </div>
+</div>
+
+<script>
+  const API_BASE = (() => {
+    const port = location.port;
+    if (location.protocol === "file:") return "http://localhost:3000/api";
+    if (port === "5500" || port === "5501" || port === "3000") return "http://localhost:3000/api";
+    return "/api";
+  })();
+
+  function toast(msg, type = "info", duration = 3500) {
+    const container = document.getElementById("toast-container");
+    const div = document.createElement("div");
+    div.className = `toast ${type}`;
+    div.textContent = msg;
+    container.appendChild(div);
+    requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add("show")));
+    setTimeout(() => { div.classList.remove("show"); setTimeout(() => div.remove(), 400); }, duration);
+  }
+
+  function fc(n) { return `&#x20b9;${parseInt(n || 0).toLocaleString("en-IN")}`; }
+
+  async function loadAlerts() {
+    const user = sessionStorage.getItem("loggedUser");
+    if (!user) { window.location.href = "index.html"; return; }
+
+    // Profile pill
+    const nav = document.getElementById("navLinks");
+    if (!document.getElementById("profilePill")) {
+      const a = document.createElement("a");
+      a.id = "profilePill"; a.href = "profile.html"; a.className = "nav-pill";
+      a.innerHTML = `&#x1F464; ${user}`;
+      nav.insertBefore(a, nav.firstChild);
+    }
+
+    document.getElementById("loadingState").style.display = "block";
+    document.getElementById("statsContainer").style.display = "none";
+    document.getElementById("alertsGrid").innerHTML = "";
+    document.getElementById("emptyState").style.display = "none";
+
+    try {
+      const res = await fetch(`${API_BASE}/price-alerts/${encodeURIComponent(user)}`);
+      if (!res.ok) throw new Error(`Server ${res.status}`);
+      const alerts = await res.json();
+
+      document.getElementById("loadingState").style.display = "none";
+
+      if (!alerts.length) {
+        document.getElementById("emptyState").style.display = "block";
+        return;
+      }
+
+      // Stats
+      const active   = alerts.filter(a => !a.notified).length;
+      const notified = alerts.filter(a => a.notified).length;
+      const reached  = alerts.filter(a => a.currentPrice <= a.targetPrice).length;
+      const lowestTarget = Math.min(...alerts.map(a => a.targetPrice));
+
+      document.getElementById("statsContainer").style.display = "grid";
+      document.getElementById("statsContainer").innerHTML = `
+        <div class="stat-box blue"><div class="stat-value">${alerts.length}</div><div class="stat-label">Total Alerts</div></div>
+        <div class="stat-box amber"><div class="stat-value">${active}</div><div class="stat-label">Active</div></div>
+        <div class="stat-box green"><div class="stat-value">${reached}</div><div class="stat-label">Target Reached</div></div>
+        <div class="stat-box red"><div class="stat-value">${notified}</div><div class="stat-label">Notified</div></div>`;
+
+      const grid = document.getElementById("alertsGrid");
+      grid.innerHTML = alerts.map(a => createCard(a)).join("");
+
+      // Attach chart and remove listeners
+      alerts.forEach(a => {
+        renderChart(a);
+        document.getElementById(`remove-${a._id}`)?.addEventListener("click", () => removeAlert(a._id));
+        document.getElementById(`save-${a._id}`)?.addEventListener("click", () => updateTarget(a._id));
+      });
+
+    } catch (err) {
+      document.getElementById("loadingState").style.display = "none";
+      toast("Failed to load alerts: " + err.message, "error", 5000);
+      document.getElementById("emptyState").style.display = "block";
+    }
+  }
+
+  function createCard(a) {
+    const isReached  = a.currentPrice <= a.targetPrice;
+    const isNotified = a.notified;
+    const diff       = a.currentPrice - a.targetPrice;
+    const pctOff     = a.currentPrice ? ((diff / a.currentPrice) * 100).toFixed(1) : null;
+
+    let statusLabel = "Active";
+    let statusClass = "active";
+    if (isNotified)     { statusLabel = "Notified"; statusClass = "notified"; }
+    else if (isReached) { statusLabel = "Reached!";  statusClass = "reached"; }
+
+    let cardClass = "alert-card";
+    if (isReached)  cardClass += " reached";
+    if (isNotified) cardClass += " notified";
+
+    const history = a.priceHistory || [{ price: a.currentPrice, timestamp: a.createdAt }];
+
+    return `
+    <div class="${cardClass}">
+      <div class="card-img">
+        <img src="${a.product?.image || ''}" alt="${a.product?.title || ''}"
+             onerror="this.src='https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=400&q=80'">
+        ${a.product?.store ? `<div class="store-badge">${a.product.store}</div>` : ''}
+        <div class="status-badge ${statusClass}">${statusLabel}</div>
+      </div>
+      <div class="card-body">
+        <div class="product-title" title="${a.product?.title || ''}">${a.product?.title || 'Product'}</div>
+
+        <div class="price-comparison">
+          <div class="price-item target">
+            <div class="price-label">Your Target</div>
+            <div class="price-value danger">${fc(a.targetPrice)}</div>
+          </div>
+          <div class="price-item current">
+            <div class="price-label">Current Price</div>
+            <div class="price-value accent">${fc(a.currentPrice)}</div>
+          </div>
+          <div class="price-item ${isReached ? 'reached-price' : ''}">
+            <div class="price-label">Still Need</div>
+            <div class="price-value ${isReached ? 'success' : 'danger'}">${isReached ? '&#x2713; Hit!' : fc(diff)}</div>
+          </div>
+        </div>
+
+        <div class="chart-section">
+          <h4><span>Price History</span><span style="color:var(--accent);font-weight:600">${history.length} data point${history.length !== 1 ? 's' : ''}</span></h4>
+          <div class="chart-container"><canvas id="chart-${a._id}"></canvas></div>
+        </div>
+
+        <div class="edit-target">
+          <input type="number" id="newTarget-${a._id}" placeholder="New target &#x20b9;" value="${a.targetPrice}" min="1">
+          <button id="save-${a._id}">Update</button>
+        </div>
+
+        <div class="card-actions">
+          <button class="btn-remove" id="remove-${a._id}">Remove</button>
+          ${a.product?.link ? `<a class="card-actions btn-buy" style="flex:1;border-radius:10px;font-weight:700;font-size:0.83rem;text-decoration:none" href="${a.product.link}" target="_blank" rel="noopener">Buy Now</a>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderChart(a) {
+    const ctx = document.getElementById(`chart-${a._id}`);
+    if (!ctx) return;
+
+    let history = [...(a.priceHistory || [{ price: a.currentPrice, timestamp: a.createdAt || new Date() }])];
+    history.sort((x, y) => new Date(x.timestamp) - new Date(y.timestamp));
+    if (history.length < 2) {
+      history.unshift({ ...history[0], timestamp: new Date(new Date(history[0]?.timestamp || Date.now()).getTime() - 86400000).toISOString() });
+    }
+
+    const labels = history.map(h => new Date(h.timestamp).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' }));
+    const data   = history.map(h => h.price);
+    const target = a.targetPrice;
+
+    const isDown = data[data.length - 1] <= target;
+    const grad = ctx.getContext('2d').createLinearGradient(0, 0, 0, 85);
+    grad.addColorStop(0, isDown ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Price', data, borderColor: isDown ? '#10b981' : '#6366f1', backgroundColor: grad, borderWidth: 2, pointBackgroundColor: isDown ? '#10b981' : '#6366f1', pointRadius: 3, fill: true, tension: 0.4 },
+          { label: 'Target', data: labels.map(() => target), borderColor: 'rgba(239,68,68,0.6)', borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: &#x20b9;${parseInt(c.raw).toLocaleString('en-IN')}` } } },
+        scales: { x: { display: false }, y: { display: false, min: Math.min(...data, target) * 0.92, max: Math.max(...data, target) * 1.08 } },
+        interaction: { intersect: false, mode: 'index' }
+      }
+    });
+  }
+
+  async function removeAlert(id) {
+    if (!confirm("Remove this alert?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/price-alerts/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Server ${res.status}`);
+      toast("Alert removed", "success");
+      loadAlerts();
+    } catch (err) {
+      toast("Failed to remove: " + err.message, "error");
+    }
+  }
+
+  async function updateTarget(id) {
+    const input = document.getElementById(`newTarget-${id}`);
+    const val = parseInt(input?.value);
+    if (!val || val <= 0) { toast("Enter a valid target price", "error"); return; }
+    try {
+      const res = await fetch(`${API_BASE}/price-alerts/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetPrice: val })
+      });
+      if (!res.ok) throw new Error(`Server ${res.status}`);
+      toast("Target price updated!", "success");
+      loadAlerts();
+    } catch (err) {
+      toast("Failed to update: " + err.message, "error");
+    }
+  }
+
+  document.getElementById("logoutBtn").addEventListener("click", e => {
+    e.preventDefault();
+    sessionStorage.removeItem("loggedUser");
+    window.location.href = "index.html";
+  });
+
+  loadAlerts();
+  setInterval(loadAlerts, 10 * 60 * 1000);
+</script>
+</body>
+</html>
