@@ -152,7 +152,7 @@
     <div class="hero-search reveal active">
       <h1 id="heroTagline">Compare Instantly. Save Massively.</h1>
       <div style="position: relative; width: 100%; max-width: 600px; margin: 0 auto; margin-bottom: 25px;">
-        <input id="item" type="search" name="search_query" autocomplete="new-password" placeholder="Search anything"
+        <input id="item" type="text" autocomplete="off" placeholder="Search anything"
                onkeydown="handleSearchKey(event)" style="width: 100%; padding-right: 50px; margin-bottom: 0;" />
         <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center;">
           <button onclick="startVoiceSearch()" title="Voice Search" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-main);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">🎤</button>
@@ -403,7 +403,15 @@
       "Let the search begin…",
       "Find it before anyone else does.",
       "Name it—we’ll find it.",
-      "Got something in mind?"
+      "Got something in mind?",
+      "Unleash Savings: Smart Shopping Starts Here",
+      "Your Personal AI Deal Hunter",
+      "Compare Instantly. Save Massively.",
+      "Why Pay More? Find the Lowest Price Now!",
+      "Shop Smarter, Not Harder",
+      "Instant Price Drops, Zero Effort",
+      "One Search, Every Store, Best Deals",
+      "AI-Powered Savings at Your Fingertips"
     ];
 
     function randomizeHero() {
@@ -411,14 +419,24 @@
       const searchInput = document.getElementById("item");
       
       const randomSlogan = slogans[Math.floor(Math.random() * slogans.length)];
-      // Ensure placeholder is different from tagline if possible
       let randomPlaceholder = slogans[Math.floor(Math.random() * slogans.length)];
       
-      if (heroTagline) heroTagline.innerText = randomSlogan;
-      if (searchInput) searchInput.placeholder = randomPlaceholder;
+      if (heroTagline) {
+        heroTagline.style.transition = "opacity 1.5s ease-in-out";
+        heroTagline.style.opacity = 0;
+        setTimeout(() => {
+          heroTagline.innerText = randomSlogan;
+          heroTagline.style.opacity = 1;
+        }, 1500);
+      }
+      if (searchInput) {
+        // Just change placeholder without fading the whole input
+        searchInput.placeholder = randomPlaceholder;
+      }
     }
 
-    randomizeHero();
+    // Set interval for smooth transitions
+    setInterval(randomizeHero, 6000);
 
     // ─── GLOBAL STATE ────────────────────────────────────────────────────────
     let amazonData   = [];
@@ -484,17 +502,9 @@
 
     // ─── WINDOW LOAD ─────────────────────────────────────────────────────────
     window.onload = function () {
-      const taglines = [
-        "Unleash Savings: Smart Shopping Starts Here",
-        "Your Personal AI Deal Hunter",
-        "Compare Instantly. Save Massively.",
-        "Why Pay More? Find the Lowest Price Now!",
-        "Shop Smarter, Not Harder",
-        "Instant Price Drops, Zero Effort",
-        "One Search, Every Store, Best Deals",
-        "AI-Powered Savings at Your Fingertips"
-      ];
-      document.getElementById("heroTagline").innerText = taglines[Math.floor(Math.random() * taglines.length)];
+      document.getElementById("heroTagline").innerText = slogans[Math.floor(Math.random() * slogans.length)];
+      const searchInput = document.getElementById("item");
+      if (searchInput) searchInput.placeholder = slogans[Math.floor(Math.random() * slogans.length)];
       const user = sessionStorage.getItem("loggedUser");
       if (user) showUser(user);
 
@@ -505,8 +515,13 @@
       const amazonCache = safeParseJSON(sessionStorage.getItem("amazonData"));
       const fkCache     = safeParseJSON(sessionStorage.getItem("flipkartData"));
       const googleCache = safeParseJSON(sessionStorage.getItem("googleData"));
+      const triggerSearch = sessionStorage.getItem("triggerSearch");
 
-      if (lastSearch && (amazonCache.length || fkCache.length || googleCache.length)) {
+      if (triggerSearch === "true" && lastSearch) {
+        sessionStorage.removeItem("triggerSearch");
+        document.getElementById("item").value = lastSearch;
+        search();
+      } else if (lastSearch && (amazonCache.length || fkCache.length || googleCache.length)) {
         document.getElementById("item").value = lastSearch;
         document.getElementById("storesSection").style.display = "flex";
 

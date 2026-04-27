@@ -528,6 +528,7 @@
     function searchForProduct(title) {
         if (!title) return;
         sessionStorage.setItem("lastSearch", title);
+        sessionStorage.setItem("triggerSearch", "true");
         window.location.href = "index.html";
     }
 
