@@ -193,7 +193,7 @@
     <div class="hero-search reveal active">
       <h1 id="heroTagline">Compare Instantly. Save Massively.</h1>
       <div style="position: relative; width: 100%; max-width: 600px; margin: 0 auto; margin-bottom: 25px;">
-        <input id="item" type="text" autocomplete="off" placeholder="Search anything"
+        <input id="item" type="search" name="q" autocomplete="off" placeholder="Search anything"
                onkeydown="handleSearchKey(event)" style="width: 100%; padding-right: 50px; margin-bottom: 0;" />
         <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center;">
           <button onclick="startVoiceSearch()" title="Voice Search" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-main);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">🎤</button>
@@ -248,36 +248,36 @@
 
     <!-- Auth Modal -->
     <div id="authModal" class="modal">
-      <div class="modal-content reveal-modal" style="max-width: 400px; padding: 40px 30px;">
+      <form id="authForm" onsubmit="event.preventDefault();" class="modal-content reveal-modal" style="max-width: 400px; padding: 40px 30px;">
         <h3 id="authTitle" style="margin-bottom: 20px; font-size: 1.5rem;">Sign In</h3>
         
         <!-- Step 1: Email Input -->
         <div id="authStep1" class="auth-step">
-          <input type="text" id="username" placeholder="Enter Email" style="width: 100%; margin-bottom: 15px;" />
-          <button id="checkUserBtn" onclick="checkUser()" style="width: 100%">Continue</button>
+          <input type="email" id="username" name="email" autocomplete="username email" placeholder="Enter Email" style="width: 100%; margin-bottom: 15px;" required />
+          <button type="button" id="checkUserBtn" onclick="checkUser()" style="width: 100%">Continue</button>
         </div>
 
         <!-- Step 2: Login Options -->
         <div id="authStepLoginOptions" class="auth-step" style="display:none">
           <p style="margin-bottom: 15px; font-size: 0.95rem; color: var(--text-body);">Welcome back! How would you like to login?</p>
-          <button onclick="startOTPFlow()" style="width: 100%; margin-bottom: 12px;">Login with OTP</button>
-          <button onclick="showPasswordInput()" style="width: 100%; background: transparent; border: 1px solid var(--primary); color: var(--primary);">Login with Password</button>
+          <button type="button" onclick="startOTPFlow()" style="width: 100%; margin-bottom: 12px;">Login with OTP</button>
+          <button type="button" onclick="showPasswordInput()" style="width: 100%; background: transparent; border: 1px solid var(--primary); color: var(--primary);">Login with Password</button>
         </div>
 
         <!-- Step 3: Password Input -->
         <div id="authStepPassword" class="auth-step" style="display:none">
           <div style="position: relative; margin-bottom: 15px;">
-            <input type="password" id="loginPassword" placeholder="Enter Password" style="width: 100%; padding-right: 40px;" />
+            <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Enter Password" style="width: 100%; padding-right: 40px;" />
             <span onclick="togglePasswordVisibility('loginPassword', this)" style="position: absolute; right: 10px; top: 12px; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">👁️</span>
           </div>
-          <button id="loginPassBtn" onclick="loginWithPassword()" style="width: 100%">Login</button>
+          <button type="button" id="loginPassBtn" onclick="loginWithPassword()" style="width: 100%">Login</button>
         </div>
 
         <!-- Step 4: OTP Input -->
         <div id="authStepOTP" class="auth-step" style="display:none">
           <p id="otpInfo" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
-          <input type="text" id="otp" placeholder="Enter 6-digit OTP" style="width: 100%; margin-bottom: 15px;" />
-          <button id="verifyOtpBtn" onclick="verifyOTP()" style="width: 100%">Verify OTP</button>
+          <input type="text" id="otp" name="otp" autocomplete="one-time-code" placeholder="Enter 6-digit OTP" style="width: 100%; margin-bottom: 15px;" />
+          <button type="button" id="verifyOtpBtn" onclick="verifyOTP()" style="width: 100%">Verify OTP</button>
           <p style="text-align: center; margin-top: 10px;"><span class="link" onclick="startOTPFlow()" style="font-size: 0.85rem;">Resend OTP</span></p>
         </div>
 
@@ -285,19 +285,19 @@
         <div id="authStepSetPassword" class="auth-step" style="display:none">
           <p style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-body);">Setup a new password for your account</p>
           <div style="position: relative; margin-bottom: 10px;">
-            <input type="password" id="newPassword" placeholder="Create Password" style="width: 100%; padding-right: 40px;" />
+            <input type="password" id="newPassword" name="new-password" autocomplete="new-password" placeholder="Create Password" style="width: 100%; padding-right: 40px;" />
             <span onclick="togglePasswordVisibility('newPassword', this)" style="position: absolute; right: 10px; top: 12px; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">👁️</span>
           </div>
           <div style="position: relative; margin-bottom: 15px;">
-            <input type="password" id="confirmPassword" placeholder="Confirm Password" style="width: 100%; padding-right: 40px;" />
+            <input type="password" id="confirmPassword" name="confirm-password" autocomplete="new-password" placeholder="Confirm Password" style="width: 100%; padding-right: 40px;" />
             <span onclick="togglePasswordVisibility('confirmPassword', this)" style="position: absolute; right: 10px; top: 12px; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">👁️</span>
           </div>
-          <button id="setPassBtn" onclick="setPassword()" style="width: 100%">Complete Registration</button>
+          <button type="button" id="setPassBtn" onclick="setPassword()" style="width: 100%">Complete Registration</button>
         </div>
 
         <p id="authMessage" style="color:var(--accent); font-weight: 500; font-size: 0.85rem; margin-top: 15px; text-align: center; min-height: 1.2rem;"></p>
-        <button class="close-modal-btn" onclick="closeModal('authModal')" style="width: 100%; margin-top: 10px;">Cancel</button>
-      </div>
+        <button type="button" class="close-modal-btn" onclick="closeModal('authModal')" style="width: 100%; margin-top: 10px;">Cancel</button>
+      </form>
     </div>
 
     <!-- Price Range Modal -->
@@ -549,8 +549,30 @@
       const user = sessionStorage.getItem("loggedUser");
       if (user) showUser(user);
 
-      // Handle ?section=X from sub-pages (must run after showUser so nav buttons exist)
       const _params = new URLSearchParams(window.location.search);
+      
+      // Handle OTP link from email
+      const _otp = _params.get("otp");
+      const _email = _params.get("email");
+      if (_otp) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(_otp)
+            .then(() => toast("📋 OTP copied to clipboard!", "success"))
+            .catch(() => {});
+        }
+        openAuthModal();
+        if (_email) {
+          document.getElementById("username").value = _email;
+        }
+        document.getElementById("otp").value = _otp;
+        const info = document.getElementById("otpInfo");
+        if (info) {
+          info.innerText = `We've sent a 6-digit code to ${_email || 'your email'}`;
+        }
+        showAuthStep("authStepOTP");
+      }
+
+      // Handle ?section=X from sub-pages (must run after showUser so nav buttons exist)
       const _section = _params.get("section");
       if (_section && ["cart", "orders", "history"].includes(_section)) {
         if (user) {
@@ -559,7 +581,10 @@
           toast("Please login to view this section", "info");
           openAuthModal();
         }
-        // Clean URL without reloading
+      }
+
+      // Clean URL without reloading if any query parameters were processed
+      if (_otp || _section) {
         history.replaceState(null, "", window.location.pathname);
       }
 
@@ -915,7 +940,6 @@
     }
 
     // ─── AI RECOMMENDATION ────────────────────────────────────────────────────
-    // FIX: Added sessionStorage caching by search query.
     // Returning to the same search shows the AI result instantly without re-calling Gemini.
     async function getAIRecommendation(query, allProducts) {
       const aiBox   = document.getElementById("aiBox");

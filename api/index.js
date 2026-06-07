@@ -115,6 +115,18 @@ router.post("/send-otp", async (req, res) => {
   const otp = Math.floor(100000 + Math.random() * 900000);
   const expiry = Date.now() + 5 * 60 * 1000;
 
+  let origin = "http://localhost:3000";
+  if (req.headers.origin) {
+    origin = req.headers.origin;
+  } else if (req.headers.referer) {
+    try {
+      origin = new URL(req.headers.referer).origin;
+    } catch (e) {
+      // ignore
+    }
+  }
+  const loginLink = `${origin}/index.html?otp=${otp}&email=${encodeURIComponent(username)}`;
+
   try {
     const database = await connectDB();
     await database.collection("otps").updateOne(
@@ -146,9 +158,22 @@ router.post("/send-otp", async (req, res) => {
           <h2 style="margin:0 0 12px;color:#f1f5f9;font-size:1.25rem;font-weight:700">Verify Your Email 🔐</h2>
           <p style="margin:0 0 28px;color:#94a3b8;font-size:0.9rem;line-height:1.6">Hi <strong style="color:#c7d2fe">${username.split('@')[0]}</strong>! Enter this one-time code to log in to your CogniCart account:</p>
           <!-- OTP Box -->
-          <div style="background:rgba(99,102,241,0.1);border:2px solid rgba(99,102,241,0.4);border-radius:16px;padding:28px;text-align:center;margin-bottom:28px">
-            <p style="margin:0 0 8px;color:#94a3b8;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px">Your Verification Code</p>
-            <div style="font-size:3rem;font-weight:900;letter-spacing:12px;color:#a5b4fc;font-variant-numeric:tabular-nums">${otp}</div>
+          <div style="background:rgba(99,102,241,0.1);border:2px solid rgba(99,102,241,0.4);border-radius:16px;padding:24px;margin-bottom:28px;text-align:center">
+            <p style="margin:0 0 16px;color:#94a3b8;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px">Your Verification Code</p>
+            <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;background:rgba(15,23,42,0.6);border-radius:12px;border:1px solid rgba(99,102,241,0.3);overflow:hidden">
+              <tr>
+                <td style="padding:14px 20px;font-size:2.2rem;font-weight:850;letter-spacing:6px;color:#a5b4fc;font-variant-numeric:tabular-nums;user-select:all;-webkit-user-select:all;-moz-user-select:all;-ms-user-select:all;vertical-align:middle">
+                  ${otp}
+                </td>
+                <td style="width:1px;background:rgba(99,102,241,0.3)"></td>
+                <td style="padding:10px 16px;vertical-align:middle">
+                  <a href="${loginLink}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:0.8rem;font-weight:700;box-shadow:0 4px 12px rgba(79,70,229,0.3);white-space:nowrap">
+                    Verify
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:16px 0 0;color:#64748b;font-size:0.75rem;line-height:1.4">Click the button to automatically copy the OTP and navigate to the verify page.</p>
           </div>
           <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 16px;margin-bottom:28px;display:flex;align-items:center;gap:10px">
             <span style="font-size:1.2rem">⏱️</span>
