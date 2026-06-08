@@ -89,7 +89,7 @@
     .alert-card.reached { border-color: rgba(16,185,129,0.35); }
     .alert-card.notified { border-color: rgba(99,102,241,0.3); opacity: 0.8; }
 
-    .card-img { width: 100%; height: 200px; background: linear-gradient(135deg, #111827, #1a2235); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .card-img { width: 100%; height: 200px; background: linear-gradient(135deg, #f0f0f0 0%, #e8e8ec 100%); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
     .card-img img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.4s; }
     .alert-card:hover .card-img img { transform: scale(1.05); }
     .store-badge { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 8px; }
@@ -307,59 +307,134 @@
     const isNotified = a.notified;
     const diff       = a.currentPrice - a.targetPrice;
     const pctOff     = a.currentPrice ? ((diff / a.currentPrice) * 100).toFixed(1) : null;
-
-    let statusLabel = "Active";
-    let statusClass = "active";
-    if (isNotified)     { statusLabel = "Notified"; statusClass = "notified"; }
-    else if (isReached) { statusLabel = "Reached!";  statusClass = "reached"; }
-
-    let cardClass = "alert-card";
-    if (isReached)  cardClass += " reached";
-    if (isNotified) cardClass += " notified";
-
     const history = a.priceHistory || [{ price: a.currentPrice, timestamp: a.createdAt }];
+    const rating = parseFloat(a.product?.rating) || null;
+    const ratingCount = a.product?.ratingCount || null;
+
+    let statusLabel = "Active"; let statusColor = "#a5b4fc"; let statusBg = "rgba(99,102,241,0.15)";
+    if (isNotified)     { statusLabel = "Notified";  statusColor = "#fbbf24"; statusBg = "rgba(245,158,11,0.15)"; }
+    else if (isReached) { statusLabel = "Reached!";  statusColor = "#34d399"; statusBg = "rgba(16,185,129,0.15)"; }
+
+    // Store colour coding
+    const storeColors = {
+      amazon:   { bg: 'rgba(255,153,0,0.15)',  border: 'rgba(255,153,0,0.35)',  text: '#ffb733' },
+      flipkart: { bg: 'rgba(40,116,240,0.15)', border: 'rgba(40,116,240,0.35)', text: '#5c9bff' },
+    };
+    const storeLower = (a.product?.store || '').toLowerCase();
+    const sc = storeColors[storeLower] || { bg: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.35)', text: '#a5b4fc' };
+
+    const topBarColor = isReached ? 'linear-gradient(90deg,#10b981,#34d399)'
+                      : isNotified ? 'linear-gradient(90deg,#f59e0b,#fbbf24)'
+                      : 'linear-gradient(90deg,#6366f1,#8b5cf6)';
 
     return `
-    <div class="${cardClass}">
-      <div class="card-img">
-        <img src="${a.product?.image || ''}" alt="${a.product?.title || ''}"
-             onerror="this.src='https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=400&q=80'">
-        ${a.product?.store ? `<div class="store-badge">${a.product.store}</div>` : ''}
-        <div class="status-badge ${statusClass}">${statusLabel}</div>
-      </div>
-      <div class="card-body">
-        <div class="product-title" title="${a.product?.title || ''}">${a.product?.title || 'Product'}</div>
+    <div style="
+        background:linear-gradient(145deg,var(--surface),var(--surface2));
+        border:1px solid ${isReached ? 'rgba(16,185,129,0.3)' : isNotified ? 'rgba(245,158,11,0.25)' : 'var(--border)'};
+        border-radius:22px;overflow:hidden;
+        transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.28s ease;
+        position:relative;
+        ${isNotified ? 'opacity:0.85;' : ''}
+    " onmouseenter="this.style.transform='translateY(-6px)';this.style.boxShadow='0 24px 60px rgba(0,0,0,0.55)'"
+       onmouseleave="this.style.transform='';this.style.boxShadow=''">
 
-        <div class="price-comparison">
-          <div class="price-item target">
-            <div class="price-label">Your Target</div>
-            <div class="price-value danger">${fc(a.targetPrice)}</div>
-          </div>
-          <div class="price-item current">
-            <div class="price-label">Current Price</div>
-            <div class="price-value accent">${fc(a.currentPrice)}</div>
-          </div>
-          <div class="price-item ${isReached ? 'reached-price' : ''}">
-            <div class="price-label">Still Need</div>
-            <div class="price-value ${isReached ? 'success' : 'danger'}">${isReached ? '&#x2713; Hit!' : fc(diff)}</div>
-          </div>
+        <!-- Top accent bar -->
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${topBarColor};z-index:2;"></div>
+
+        <!-- Product Image -->
+        <div style="position:relative;overflow:hidden;height:190px;background:linear-gradient(135deg,#f0f0f0 0%,#e8e8ec 100%);">
+            <img src="${a.product?.image || ''}" alt="${a.product?.title || ''}"
+                 onerror="this.src='https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=400&q=80'"
+                 style="width:100%;height:100%;object-fit:contain;padding:12px;transition:transform 0.5s ease;"
+                 onmouseenter="this.style.transform='scale(1.07)'"
+                 onmouseleave="this.style.transform='scale(1)'">
+
+            ${a.product?.store ? `
+            <div style="position:absolute;top:12px;left:12px;background:${sc.bg};border:1px solid ${sc.border};color:${sc.text};font-size:0.7rem;font-weight:700;padding:4px 10px;border-radius:8px;backdrop-filter:blur(8px);">
+                ${a.product.store}
+            </div>` : ''}
+
+            <div style="position:absolute;top:12px;right:12px;background:${statusBg};border:1px solid ${statusColor}44;color:${statusColor};font-size:0.7rem;font-weight:800;padding:5px 11px;border-radius:9px;backdrop-filter:blur(6px);">
+                ${statusLabel}
+            </div>
         </div>
 
-        <div class="chart-section">
-          <h4><span>Price History</span><span style="color:var(--accent);font-weight:600">${history.length} data point${history.length !== 1 ? 's' : ''}</span></h4>
-          <div class="chart-container"><canvas id="chart-${a._id}"></canvas></div>
-        </div>
+        <!-- Card Body -->
+        <div style="padding:18px 20px 20px;">
+            <!-- Title -->
+            <div title="${a.product?.title || ''}" style="
+                font-size:0.92rem;font-weight:600;color:var(--text);
+                margin-bottom:8px;line-height:1.5;
+                display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em;
+            ">${a.product?.title || 'Product'}</div>
+            
+            <!-- Rating -->
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;color:#fbbf24;font-size:0.85rem;">
+               <span>⭐ <strong style="font-size:1rem;color:var(--primary)">${rating ? rating.toFixed(1) : ''}</strong></span>
+               <span style="color:var(--text-muted);font-size:0.75rem;">(${ratingCount ? parseInt(ratingCount).toLocaleString() : ''})</span>
+            </div>
 
-        <div class="edit-target">
-          <input type="number" id="newTarget-${a._id}" placeholder="New target &#x20b9;" value="${a.targetPrice}" min="1">
-          <button id="save-${a._id}">Update</button>
-        </div>
+            <!-- Price comparison panel -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+                <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:11px 8px;text-align:center;">
+                    <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;">Your Target</div>
+                    <div style="font-size:1.05rem;font-weight:800;color:#f87171;">${fc(a.targetPrice)}</div>
+                </div>
+                <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:11px 8px;text-align:center;">
+                    <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;">Current</div>
+                    <div style="font-size:1.05rem;font-weight:800;color:#a5b4fc;">${fc(a.currentPrice)}</div>
+                </div>
+                <div style="background:${isReached ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)'};border:1px solid ${isReached ? 'rgba(16,185,129,0.3)' : 'var(--border)'};border-radius:12px;padding:11px 8px;text-align:center;">
+                    <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;">Still Need</div>
+                    <div style="font-size:1.05rem;font-weight:800;color:${isReached ? '#34d399' : '#f87171'};">${isReached ? '✓ Hit!' : fc(diff)}</div>
+                </div>
+            </div>
 
-        <div class="card-actions">
-          <button class="btn-remove" id="remove-${a._id}">Remove</button>
-          ${a.product?.link ? `<a class="card-actions btn-buy" style="flex:1;border-radius:10px;font-weight:700;font-size:0.83rem;text-decoration:none" href="${a.product.link}" target="_blank" rel="noopener">Buy Now</a>` : ''}
+            <!-- Price chart -->
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <span style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Price History</span>
+                    <span style="font-size:0.68rem;color:var(--accent);font-weight:600;">${history.length} data pt${history.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div style="position:relative;height:80px;"><canvas id="chart-${a._id}"></canvas></div>
+            </div>
+
+            <!-- Edit target price -->
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+                <input type="number" id="newTarget-${a._id}" placeholder="New target ₹" value="${a.targetPrice}" min="1" style="
+                    flex:1;padding:9px 12px;border-radius:10px;
+                    border:1px solid rgba(99,102,241,0.3);
+                    background:rgba(99,102,241,0.05);
+                    color:var(--text);font-size:0.88rem;outline:none;
+                    transition:border-color 0.2s;
+                " onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='rgba(99,102,241,0.3)'">
+                <button id="save-${a._id}" style="
+                    padding:9px 16px;border-radius:10px;border:none;
+                    background:linear-gradient(135deg,var(--accent),var(--accent2));
+                    color:#fff;font-size:0.82rem;font-weight:700;
+                    cursor:pointer;white-space:nowrap;transition:opacity 0.2s;
+                " onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">Update</button>
+            </div>
+
+            <!-- Action buttons -->
+            <div style="display:flex;gap:8px;">
+                <button id="remove-${a._id}" style="
+                    flex:1;padding:11px;border-radius:11px;border:1px solid rgba(239,68,68,0.3);
+                    background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.83rem;font-weight:700;
+                    cursor:pointer;transition:all 0.2s;
+                " onmouseenter="this.style.background='rgba(239,68,68,0.18)'"
+                   onmouseleave="this.style.background='rgba(239,68,68,0.08)'">Remove</button>
+
+                ${a.product?.link ? `
+                <a href="${a.product.link}" target="_blank" rel="noopener" style="
+                    flex:1;padding:11px;border-radius:11px;border:none;
+                    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+                    font-size:0.83rem;font-weight:700;text-decoration:none;
+                    display:flex;align-items:center;justify-content:center;gap:4px;
+                    transition:opacity 0.2s;
+                " onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">🛒 Buy Now</a>` : ''}
+            </div>
         </div>
-      </div>
     </div>`;
   }
 

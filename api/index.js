@@ -362,12 +362,22 @@ async function scrapeAmazon(query, page = 1) {
         const image = $(el).find("img.s-image").attr("src");
         const linkElem = $(el).find("a.a-link-normal").attr("href") || $(el).find("h2 a").attr("href");
         let link = cleanProductLink(linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.amazon.in${linkElem}`) : `https://www.amazon.in/s?k=${encodeURIComponent(query)}`);
+
+        // ── Real rating: Amazon stores it as aria-label on .a-icon-alt, e.g. "4.8 out of 5 stars"
+        const ratingText = $(el).find(".a-icon-alt").first().text().trim();
+        const ratingMatch = ratingText.match(/([\d.]+)\s+out of/);
+        const rating = ratingMatch ? ratingMatch[1] : null;
+
+        // ── Real review count: shown in .a-size-base.s-underline-text
+        const ratingCountRaw = $(el).find(".a-size-base.s-underline-text").first().text().trim().replace(/,/g, "");
+        const ratingCount = ratingCountRaw && /^[\d]+$/.test(ratingCountRaw) ? ratingCountRaw : null;
         
         if (title && price) {
           results.push({
             title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
             price,
-            rating: "4.5",
+            rating: rating || null,
+            ratingCount: ratingCount || null,
             image: image || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
             link: link,
             store: "Amazon"
@@ -417,11 +427,21 @@ async function scrapeFlipkart(query, page = 1) {
         const linkElem = $(el).find("a").attr("href") || $(el).attr("href");
         let link = cleanProductLink(linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.flipkart.com${linkElem}`) : `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`);
 
+        // ── Real Flipkart rating: stored in ._3LWZlK or .gUuXy- spans
+        const ratingText = $(el).find("._3LWZlK, .gUuXy-, ._1lRcqv").first().text().trim();
+        const rating = ratingText && /^[\d.]+$/.test(ratingText) ? ratingText : null;
+
+        // ── Real Flipkart review count: stored in ._2_R_DZ or .Wphh3N spans
+        const countRaw = $(el).find("._2_R_DZ, .Wphh3N").first().text().trim();
+        const countMatch = countRaw.match(/([\d,]+)\s*(Ratings|Reviews|ratings|reviews)/i);
+        const ratingCount = countMatch ? countMatch[1].replace(/,/g, "") : null;
+
         if (title && price) {
           results.push({
             title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
             price,
-            rating: "4.3",
+            rating: rating || null,
+            ratingCount: ratingCount || null,
             image: image,
             link: link,
             store: "Flipkart"
@@ -472,7 +492,8 @@ async function scrapeGoogle(query, page = 1) {
             return {
               title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
               price,
-              rating: item.rating ? String(item.rating) : "4.5",
+              rating: item.rating ? String(item.rating) : null,
+              ratingCount: item.reviews ? String(item.reviews) : null,
               image:  item.thumbnail || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
               link:   link,
               store:  item.source   || "Google Shopping",
@@ -519,7 +540,8 @@ async function scrapeGoogle(query, page = 1) {
             return {
               title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
               price,
-              rating: item.rating ? String(item.rating) : "4.5",
+              rating: item.rating ? String(item.rating) : null,
+              ratingCount: item.reviews ? String(item.reviews) : null,
               image:  item.thumbnail || item.image || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
               link:   link,
               store:  item.source || item.merchant || "Web Store",
@@ -563,7 +585,8 @@ async function scrapeGoogle(query, page = 1) {
           results.push({
             title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
             price,
-            rating: "4.5",
+            rating: null,
+            ratingCount: null,
             image: image.startsWith("http") ? image : "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80",
             link: link,
             store,
@@ -579,24 +602,117 @@ async function scrapeGoogle(query, page = 1) {
 
   return [];
 }
-// ─── 5. SEARCH ENDPOINT ──────────────────────────────────────────────────────
+// ─── 5. QUERY RESOLVER (Natural Language → Product Keywords) ─────────────────
+//
+// WHY: Users may search "best laptop for video editing" or "which phone has
+// the best camera under 20000". Scrapers need simple product keyword queries
+// like "laptop video editing" to return meaningful results.
+// We use Groq LLM to extract the product keywords from any natural-language input.
+// The result is cached to avoid repeated API calls for the same query.
+
+const nlQueryCache = new Map(); // key: rawQuery → resolvedKeywords
+
+async function resolveNaturalLanguageQuery(rawQuery) {
+  const lower = rawQuery.toLowerCase().trim();
+  if (nlQueryCache.has(lower)) return nlQueryCache.get(lower);
+
+  // Heuristic: if the query is short (≤4 words) and has no question words,
+  // treat it as a direct product keyword — skip the AI call.
+  const words = lower.split(/\s+/);
+  const questionWords = ["best", "which", "what", "good", "recommend", "suggest",
+                         "for", "under", "under", "cheapest", "top", "should", "tell",
+                         "help", "find", "looking", "want", "need"];
+  const isNL = words.length > 3 && questionWords.some(w => lower.includes(w));
+  if (!isNL) {
+    nlQueryCache.set(lower, lower);
+    return lower;
+  }
+
+  try {
+    const groqKey = env("GROQ_API_KEY");
+    if (!groqKey) throw new Error("No GROQ key");
+
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.1-8b-instant",
+        messages: [{
+          role: "user",
+          content:
+            `You are a product search keyword extractor for an Indian e-commerce price comparison app.\n` +
+            `The user typed: "${rawQuery}"\n` +
+            `Extract the core product search keywords (2-6 words max). ` +
+            `IMPORTANT RULES:\n` +
+            `1. If the user mentions a specific brand (e.g. Dell, Samsung, Apple, Sony, boAt), ALWAYS include the brand name in the keywords.\n` +
+            `2. Keep the product category and key descriptors (e.g. 'video editing', 'gaming', 'under 20000').\n` +
+            `3. Return ONLY the keywords, no explanation, no quotes, no punctuation.\n` +
+            `Examples:\n` +
+            `- "best laptop for video editing" → laptop video editing\n` +
+            `- "best Dell laptop for video editing" → Dell laptop video editing\n` +
+            `- "which Samsung phone has best camera under 20000" → Samsung smartphone camera under 20000\n` +
+            `- "I need a good boAt bluetooth speaker" → boAt bluetooth speaker\n` +
+            `- "gaming mouse under 2000" → gaming mouse 2000\n` +
+            `- "Apple MacBook for students" → Apple MacBook students\n` +
+            `Now extract keywords for: "${rawQuery}"`
+        }],
+        max_tokens: 30,
+        temperature: 0.1,
+      },
+      {
+        headers: { Authorization: `Bearer ${groqKey}` },
+        timeout: 8000,
+      }
+    );
+
+    const resolved = response.data.choices[0].message.content
+      .trim()
+      .replace(/["'\n]/g, "")
+      .toLowerCase()
+      .substring(0, 80);
+
+    nlQueryCache.set(lower, resolved || lower);
+    console.log(`[NL Query] "${rawQuery}" → "${resolved}"`);
+    return resolved || lower;
+  } catch (e) {
+    console.warn("NL query resolve failed, using raw:", e.message);
+    nlQueryCache.set(lower, lower);
+    return lower;
+  }
+}
+
+// Endpoint so the frontend can resolve queries and show the user what was searched
+router.post("/resolve-query", async (req, res) => {
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ error: "Query required" });
+  try {
+    const resolved = await resolveNaturalLanguageQuery(query.trim());
+    res.json({ original: query, resolved });
+  } catch (err) {
+    res.json({ original: query, resolved: query });
+  }
+});
+
+// ─── 6. SEARCH ENDPOINT ──────────────────────────────────────────────────────
 
 router.get("/search/:store", async (req, res) => {
-  const query = (req.query.q || "").trim().toLowerCase();
+  const rawQuery = (req.query.q || "").trim();
   const page = parseInt(req.query.page) || 1;
   const store = req.params.store;
-  if (!query) return res.status(400).json({ error: "Query required" });
+  if (!rawQuery) return res.status(400).json({ error: "Query required" });
+
+  // Resolve natural-language query to product keywords
+  const query = await resolveNaturalLanguageQuery(rawQuery.toLowerCase());
 
   const cacheKey = `${store}_${query}_p${page}`;
   const cached = getCached(searchCache, cacheKey);
   if (cached) {
-    return res.json({ data: cached, fromCache: true });
+    return res.json({ data: cached, fromCache: true, resolvedQuery: query });
   }
 
   if (inflightSearches.has(cacheKey)) {
     try {
       const result = await inflightSearches.get(cacheKey);
-      return res.json({ data: result });
+      return res.json({ data: result, resolvedQuery: query });
     } catch {
       return res.status(500).json({ error: "Search failed" });
     }
@@ -613,7 +729,7 @@ router.get("/search/:store", async (req, res) => {
   try {
     const result = await scraperPromise;
     setCache(searchCache, cacheKey, result, SEARCH_TTL);
-    res.json({ data: result });
+    res.json({ data: result, resolvedQuery: query });
   } catch (err) {
     console.error("Search error for", store, ":", err);
     res.status(500).json({ error: "Search failed" });
