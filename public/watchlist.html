@@ -1,311 +1,1118 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Price Watchlist - CogniCart</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #080e1c; --surface: #111827; --surface2: #1a2235;
-            --border: rgba(255,255,255,0.07); --accent: #6366f1; --accent2: #8b5cf6;
-            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
-            --text: #f1f5f9; --text-muted: #64748b; --radius: 16px;
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --bg: #080e1c;
+        --surface: #111827;
+        --surface2: #1a2235;
+        --border: rgba(255, 255, 255, 0.07);
+        --accent: #6366f1;
+        --accent2: #8b5cf6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --text: #f1f5f9;
+        --text-muted: #64748b;
+        --radius: 16px;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding-bottom: 80px;
+      }
+
+      /* Toast */
+      #toast-container {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 9999;
+        pointer-events: none;
+      }
+      .toast {
+        padding: 13px 20px;
+        border-radius: 12px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        backdrop-filter: blur(12px);
+        transform: translateX(120%);
+        opacity: 0;
+        transition:
+          transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+          opacity 0.35s;
+        pointer-events: none;
+        max-width: 300px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      }
+      .toast.show {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      .toast.success {
+        border-color: var(--success);
+        color: var(--success);
+      }
+      .toast.error {
+        border-color: var(--danger);
+        color: var(--danger);
+      }
+      .toast.info {
+        border-color: var(--accent);
+        color: #a5b4fc;
+      }
+
+      /* Confirm Modal */
+      #confirmModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+      }
+      #confirmModal.open {
+        display: flex;
+      }
+      .confirm-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 36px 32px;
+        max-width: 360px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      @keyframes popIn {
+        from {
+          transform: scale(0.85);
+          opacity: 0;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; }
-
-        /* Toast */
-        #toast-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
-        .toast { padding: 13px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); color: var(--text); backdrop-filter: blur(12px); transform: translateX(120%); opacity: 0; transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.35s; pointer-events: none; max-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .toast.show { transform: translateX(0); opacity: 1; }
-        .toast.success { border-color: var(--success); color: var(--success); }
-        .toast.error   { border-color: var(--danger);  color: var(--danger); }
-        .toast.info    { border-color: var(--accent);  color: #a5b4fc; }
-
-        /* Confirm Modal */
-        #confirmModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; }
-        #confirmModal.open { display: flex; }
-        .confirm-box { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 36px 32px; max-width: 360px; width: 90%; text-align: center; box-shadow: 0 32px 80px rgba(0,0,0,0.6); animation: popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
-        @keyframes popIn { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
-        .confirm-box .icon { font-size: 3rem; margin-bottom: 16px; }
-        .confirm-box h3 { font-size: 1.15rem; margin-bottom: 8px; }
-        .confirm-box p  { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6; }
-        .confirm-actions { display: flex; gap: 12px; }
-        .confirm-actions button { flex: 1; padding: 12px; border: none; border-radius: 12px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
-        .confirm-actions button:hover { opacity: 0.85; transform: scale(0.97); }
-        .btn-yes { background: var(--danger); color: #fff; }
-        .btn-no  { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
-
-        /* Nav */
-        nav { background: rgba(8,14,28,0.85); backdrop-filter: blur(16px); padding: 1rem 2.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        nav h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
-        nav h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; color: transparent; }
-        .nav-links { display: flex; gap: 6px; align-items: center; }
-
-        /* Unified Nav Buttons */
-        .nav-btn {
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px;
-            padding: 7px 16px;
-            color: var(--text-muted);
-            font-size: 0.84rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s, border-color 0.2s;
-            white-space: nowrap;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        to {
+          transform: scale(1);
+          opacity: 1;
         }
-        .nav-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: rgba(255,255,255,0.18); }
-        .nav-btn.active {
-            background: var(--accent); /* Using accent for highlight in subpages */
-            border-color: transparent;
-            color: #fff;
-            font-weight: 700;
+      }
+      .confirm-box .icon {
+        font-size: 3rem;
+        margin-bottom: 16px;
+      }
+      .confirm-box h3 {
+        font-size: 1.15rem;
+        margin-bottom: 8px;
+      }
+      .confirm-box p {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        margin-bottom: 28px;
+        line-height: 1.6;
+      }
+      .confirm-actions {
+        display: flex;
+        gap: 12px;
+      }
+      .confirm-actions button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition:
+          opacity 0.2s,
+          transform 0.15s;
+      }
+      .confirm-actions button:hover {
+        opacity: 0.85;
+        transform: scale(0.97);
+      }
+      .btn-yes {
+        background: var(--danger);
+        color: #fff;
+      }
+      .btn-no {
+        background: var(--surface2);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+      }
+
+      /* Nav */
+      nav {
+        background: rgba(8, 14, 28, 0.85);
+        backdrop-filter: blur(16px);
+        padding: 1rem 2.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      nav h1 {
+        font-size: 1.3rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+      }
+      nav h1 span {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+      .nav-links {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      /* Unified Nav Buttons */
+      .nav-btn {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 7px 16px;
+        color: var(--text-muted);
+        font-size: 0.84rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          color 0.2s,
+          border-color 0.2s;
+        white-space: nowrap;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        border-color: rgba(255, 255, 255, 0.18);
+      }
+      .nav-btn.active {
+        background: var(--accent); /* Using accent for highlight in subpages */
+        border-color: transparent;
+        color: #fff;
+        font-weight: 700;
+      }
+      .nav-btn-profile {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: var(--text) !important;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .nav-btn-profile:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+      }
+      .nav-btn-logout {
+        color: rgba(239, 68, 68, 0.75) !important;
+        border-color: rgba(239, 68, 68, 0.18) !important;
+      }
+      .nav-btn-logout:hover {
+        background: rgba(239, 68, 68, 0.08) !important;
+        color: #ef4444 !important;
+        border-color: rgba(239, 68, 68, 0.35) !important;
+      }
+
+      /* Page */
+      .page-wrap {
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 36px 24px;
+      }
+      .page-header {
+        margin-bottom: 36px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .page-header-text h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+      }
+      .page-header-text p {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+      .last-updated {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 12px;
+      }
+
+      /* Stats */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 16px;
+        margin-bottom: 36px;
+      }
+      .stat-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px 20px;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+      .stat-box::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+      }
+      .stat-box.blue::before {
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      }
+      .stat-box.green::before {
+        background: linear-gradient(90deg, #10b981, #34d399);
+      }
+      .stat-box.amber::before {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      }
+      .stat-box.pink::before {
+        background: linear-gradient(90deg, #ec4899, #f472b6);
+      }
+      .stat-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      }
+      .stat-emoji {
+        font-size: 1.6rem;
+        margin-bottom: 10px;
+      }
+      .stat-value {
+        font-size: 1.9rem;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+      .stat-label {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+      }
+
+      /* Grid */
+      .watchlist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 24px;
+      }
+
+      /* Card */
+      .watchlist-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        overflow: hidden;
+        transition:
+          transform 0.25s,
+          box-shadow 0.25s;
+      }
+      .watchlist-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      }
+      .watchlist-card.has-drop {
+        border-color: rgba(16, 185, 129, 0.3);
+        box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.15);
+      }
+
+      .product-image {
+        width: 100%;
+        height: 210px;
+        background: linear-gradient(135deg, #f0f0f0 0%, #e8e8ec 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+      }
+      .product-image img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.4s;
+      }
+      .watchlist-card:hover .product-image img {
+        transform: scale(1.05);
+      }
+      .store-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 8px;
+      }
+      .drop-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: linear-gradient(
+          135deg,
+          rgba(16, 185, 129, 0.9),
+          rgba(5, 150, 105, 0.9)
+        );
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 5px 10px;
+        border-radius: 8px;
+        letter-spacing: 0.3px;
+      }
+
+      .card-content {
+        padding: 20px;
+      }
+      .product-title {
+        font-size: 0.93rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 12px;
+        line-height: 1.45;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .drop-notification {
+        background: linear-gradient(
+          135deg,
+          rgba(16, 185, 129, 0.1),
+          rgba(5, 150, 105, 0.05)
+        );
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        font-size: 0.82rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .drop-notification span {
+        color: var(--success);
+        font-weight: 600;
+      }
+
+      .price-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .current-price {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--success);
+        letter-spacing: -1px;
+      }
+      .previous-price {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        text-decoration: line-through;
+      }
+      .pct-badge {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--success);
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border: 1px solid rgba(16, 185, 129, 0.25);
+      }
+
+      .price-meta {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .price-meta-item {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+      }
+      .price-meta-item strong {
+        color: var(--text);
+      }
+
+      .chart-section {
+        background: var(--surface2);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      .chart-section h4 {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .chart-container {
+        position: relative;
+        height: 90px;
+      }
+
+      .alert-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--surface2);
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        font-size: 0.82rem;
+      }
+      .alert-on {
+        color: var(--success);
+        font-weight: 600;
+      }
+      .alert-off {
+        color: var(--text-muted);
+      }
+
+      .card-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .card-actions button {
+        flex: 1;
+        padding: 11px;
+        border: none;
+        border-radius: 11px;
+        font-weight: 700;
+        font-size: 0.84rem;
+        cursor: pointer;
+        transition:
+          opacity 0.2s,
+          transform 0.15s;
+      }
+      .card-actions button:hover {
+        opacity: 0.85;
+        transform: scale(0.98);
+      }
+      .btn-remove {
+        background: rgba(239, 68, 68, 0.12);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+      }
+      .btn-buy {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+      }
+
+      /* Empty */
+      .empty-state {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 70px 24px;
+        text-align: center;
+        display: none;
+      }
+      .empty-emoji {
+        font-size: 4rem;
+        margin-bottom: 16px;
+      }
+      .empty-state h3 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      .empty-state p {
+        color: var(--text-muted);
+        margin-bottom: 28px;
+        font-size: 0.9rem;
+        line-height: 1.6;
+      }
+      .btn-primary {
+        display: inline-block;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+        padding: 13px 32px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition:
+          opacity 0.2s,
+          transform 0.15s;
+      }
+      .btn-primary:hover {
+        opacity: 0.85;
+        transform: scale(0.98);
+      }
+
+      /* Loading */
+      #loadingState {
+        text-align: center;
+        padding: 80px 20px;
+        color: var(--text-muted);
+      }
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 20px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
         }
-        .nav-btn-profile {
-            background: rgba(255,255,255,0.05) !important;
-            border-color: rgba(255,255,255,0.12) !important;
-            color: var(--text) !important;
-            display: flex; align-items: center; gap: 6px;
+      }
+
+      .folder-bar-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 24px;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .folder-bar-container::-webkit-scrollbar {
+        display: none;
+      }
+      .folder-tab {
+        border-radius: 14px;
+        padding: 8px 20px;
+        font-size: 0.88rem;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        white-space: nowrap;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text-muted);
+      }
+      .folder-tab:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      .folder-tab.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        transform: translateY(-1px);
+      }
+      .folder-tab.active span {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .folder-tab span {
+        font-size: 0.72rem;
+        opacity: 0.8;
+        margin-left: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 2px 8px;
+        border-radius: 8px;
+        transition: 0.3s;
+      }
+
+      option {
+        background: var(--surface);
+        color: var(--text-main);
+      }
+
+      @media (max-width: 640px) {
+        .watchlist-grid {
+          grid-template-columns: 1fr;
         }
-        .nav-btn-profile:hover { background: rgba(255,255,255,0.1) !important; }
-        .nav-btn-logout {
-            color: rgba(239,68,68,0.75) !important;
-            border-color: rgba(239,68,68,0.18) !important;
+        nav {
+          flex-direction: column;
+          gap: 12px;
+          padding: 1rem;
         }
-        .nav-btn-logout:hover { background: rgba(239,68,68,0.08) !important; color: #ef4444 !important; border-color: rgba(239,68,68,0.35) !important; }
-
-        /* Page */
-        .page-wrap { max-width: 1300px; margin: 0 auto; padding: 36px 24px; }
-        .page-header { margin-bottom: 36px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-        .page-header-text h2 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
-        .page-header-text p  { color: var(--text-muted); font-size: 0.9rem; }
-        .last-updated { font-size: 0.78rem; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; }
-
-        /* Stats */
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 36px; }
-        .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 20px; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
-        .stat-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-        .stat-box.blue::before   { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
-        .stat-box.green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
-        .stat-box.amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-        .stat-box.pink::before   { background: linear-gradient(90deg, #ec4899, #f472b6); }
-        .stat-box:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
-        .stat-emoji { font-size: 1.6rem; margin-bottom: 10px; }
-        .stat-value { font-size: 1.9rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
-        .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; }
-
-        /* Grid */
-        .watchlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px; }
-
-        /* Card */
-        .watchlist-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
-        .watchlist-card:hover { transform: translateY(-5px); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .watchlist-card.has-drop { border-color: rgba(16,185,129,0.3); box-shadow: 0 0 0 1px rgba(16,185,129,0.15); }
-
-        .product-image { width: 100%; height: 210px; background: linear-gradient(135deg, #f0f0f0 0%, #e8e8ec 100%); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-        .product-image img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.4s; }
-        .watchlist-card:hover .product-image img { transform: scale(1.05); }
-        .store-badge { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 8px; }
-        .drop-badge { position: absolute; top: 12px; right: 12px; background: linear-gradient(135deg, rgba(16,185,129,0.9), rgba(5,150,105,0.9)); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 5px 10px; border-radius: 8px; letter-spacing: 0.3px; }
-
-        .card-content { padding: 20px; }
-        .product-title { font-size: 0.93rem; font-weight: 600; color: var(--text); margin-bottom: 12px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
-        .drop-notification { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05)); border: 1px solid rgba(16,185,129,0.2); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px; }
-        .drop-notification span { color: var(--success); font-weight: 600; }
-
-        .price-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-        .current-price { font-size: 1.8rem; font-weight: 800; color: var(--success); letter-spacing: -1px; }
-        .previous-price { font-size: 0.95rem; color: var(--text-muted); text-decoration: line-through; }
-        .pct-badge { background: rgba(16,185,129,0.15); color: var(--success); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(16,185,129,0.25); }
-
-        .price-meta { display: flex; gap: 16px; margin-bottom: 16px; }
-        .price-meta-item { font-size: 0.78rem; color: var(--text-muted); }
-        .price-meta-item strong { color: var(--text); }
-
-        .chart-section { background: var(--surface2); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
-        .chart-section h4 { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
-        .chart-container { position: relative; height: 90px; }
-
-        .alert-toggle { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; }
-        .alert-on  { color: var(--success); font-weight: 600; }
-        .alert-off { color: var(--text-muted); }
-
-        .card-actions { display: flex; gap: 10px; }
-        .card-actions button { flex: 1; padding: 11px; border: none; border-radius: 11px; font-weight: 700; font-size: 0.84rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
-        .card-actions button:hover { opacity: 0.85; transform: scale(0.98); }
-        .btn-remove { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
-        .btn-buy { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px; }
-
-        /* Empty */
-        .empty-state { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 70px 24px; text-align: center; display: none; }
-        .empty-emoji { font-size: 4rem; margin-bottom: 16px; }
-        .empty-state h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 10px; }
-        .empty-state p  { color: var(--text-muted); margin-bottom: 28px; font-size: 0.9rem; line-height: 1.6; }
-        .btn-primary { display: inline-block; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; padding: 13px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.9rem; transition: opacity 0.2s, transform 0.15s; }
-        .btn-primary:hover { opacity: 0.85; transform: scale(0.98); }
-
-        /* Loading */
-        #loadingState { text-align: center; padding: 80px 20px; color: var(--text-muted); }
-        .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .folder-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 20px; border: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
-        .folder-bar-container::-webkit-scrollbar { display: none; }
-        .folder-tab { border-radius: 14px; padding: 8px 20px; font-size: 0.88rem; cursor: pointer; font-weight: 600; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; border: 1px solid transparent; background: transparent; color: var(--text-muted); }
-        .folder-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
-        .folder-tab.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; box-shadow: 0 8px 20px rgba(99,102,241,0.3); transform: translateY(-1px); }
-        .folder-tab.active span { background: rgba(255,255,255,0.2); }
-        .folder-tab span { font-size: 0.72rem; opacity: 0.8; margin-left: 6px; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 8px; transition: 0.3s; }
-        
-        option { background: var(--surface); color: var(--text-main); }
-
-        @media (max-width: 640px) { .watchlist-grid { grid-template-columns: 1fr; } nav { flex-direction: column; gap: 12px; padding: 1rem; } .page-wrap { padding: 20px 14px; } .page-header { flex-direction: column; align-items: flex-start; } }
+        .page-wrap {
+          padding: 20px 14px;
+        }
+        .page-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
     </style>
-</head>
-<body>
-<div id="toast-container"></div>
+  </head>
+  <body>
+    <div id="toast-container"></div>
 
-<div id="confirmModal">
-    <div class="confirm-box">
+    <div id="confirmModal">
+      <div class="confirm-box">
         <div class="icon">🗑️</div>
         <h3>Remove from Watchlist?</h3>
-        <p>This product will be removed and you won't receive price drop alerts for it anymore.</p>
+        <p>
+          This product will be removed and you won't receive price drop alerts
+          for it anymore.
+        </p>
         <div class="confirm-actions">
-            <button class="btn-no"  id="confirmNo">Keep It</button>
-            <button class="btn-yes" id="confirmYes">Remove</button>
+          <button class="btn-no" id="confirmNo">Keep It</button>
+          <button class="btn-yes" id="confirmYes">Remove</button>
         </div>
+      </div>
     </div>
-</div>
 
-<!-- Move Folder Modal -->
-<div id="moveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
-  <div style="background:var(--surface); border:1px solid rgba(16,185,129,0.3); border-radius:24px; padding:36px 32px; max-width:380px; width:90%; box-shadow:0 32px 80px rgba(0,0,0,0.6); animation:popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);">
-    <div style="font-size:2.5rem; text-align:center; margin-bottom:12px">🔀</div>
-    <h3 style="text-align:center; font-size:1.2rem; margin-bottom:6px;">Move to Folder</h3>
-    <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Select the destination folder.</p>
-    
-    <select id="moveFolderDropdown" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(16,185,129,0.4); background:rgba(16,185,129,0.06); color:#f1f5f9; font-size:0.95rem; outline:none; margin-bottom:18px;">
-    </select>
-    
-    <div style="display:flex; gap:10px;">
-      <button onclick="document.getElementById('moveModal').style.display='none'" style="flex:1; padding:12px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-weight:600;">Cancel</button>
-      <button onclick="confirmMoveItem()" style="flex:1; padding:12px; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; cursor:pointer; font-weight:700;">✓ Move</button>
+    <!-- Move Folder Modal -->
+    <div
+      id="moveModal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div
+        style="
+          background: var(--surface);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          border-radius: 24px;
+          padding: 36px 32px;
+          max-width: 380px;
+          width: 90%;
+          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+          animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        "
+      >
+        <div style="font-size: 2.5rem; text-align: center; margin-bottom: 12px">
+          🔀
+        </div>
+        <h3 style="text-align: center; font-size: 1.2rem; margin-bottom: 6px">
+          Move to Folder
+        </h3>
+        <p
+          style="
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+          "
+        >
+          Select the destination folder.
+        </p>
+
+        <select
+          id="moveFolderDropdown"
+          style="
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.06);
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            outline: none;
+            margin-bottom: 18px;
+          "
+        ></select>
+
+        <div style="display: flex; gap: 10px">
+          <button
+            onclick="
+              document.getElementById('moveModal').style.display = 'none'
+            "
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 12px;
+              background: var(--surface2);
+              border: 1px solid var(--border);
+              color: var(--text-muted);
+              cursor: pointer;
+              font-weight: 600;
+            "
+          >
+            Cancel
+          </button>
+          <button
+            onclick="confirmMoveItem()"
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 12px;
+              background: linear-gradient(135deg, #10b981, #059669);
+              border: none;
+              color: #fff;
+              cursor: pointer;
+              font-weight: 700;
+            "
+          >
+            ✓ Move
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<!-- Rename Folder Modal -->
-<div id="renameFolderModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
-  <div style="background:var(--surface); border:1px solid rgba(245,158,11,0.3); border-radius:24px; padding:36px 32px; max-width:380px; width:90%; box-shadow:0 32px 80px rgba(0,0,0,0.6); animation:popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);">
-    <div style="font-size:2.5rem; text-align:center; margin-bottom:12px">✏️</div>
-    <h3 style="text-align:center; font-size:1.2rem; margin-bottom:6px;">Rename Folder</h3>
-    <input type="text" id="renameFolderInput" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(245,158,11,0.4); background:rgba(245,158,11,0.06); color:#f1f5f9; font-size:0.95rem; outline:none; margin-bottom:18px;" placeholder="New folder name">
-    
-    <div style="display:flex; gap:10px;">
-      <button onclick="document.getElementById('renameFolderModal').style.display='none'" style="flex:1; padding:12px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-weight:600;">Cancel</button>
-      <button onclick="confirmRenameFolder()" style="flex:1; padding:12px; border-radius:12px; background:linear-gradient(135deg,#f59e0b,#d97706); border:none; color:#fff; cursor:pointer; font-weight:700;">✓ Save</button>
+    <!-- Rename Folder Modal -->
+    <div
+      id="renameFolderModal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div
+        style="
+          background: var(--surface);
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          border-radius: 24px;
+          padding: 36px 32px;
+          max-width: 380px;
+          width: 90%;
+          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+          animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        "
+      >
+        <div style="font-size: 2.5rem; text-align: center; margin-bottom: 12px">
+          ✏️
+        </div>
+        <h3 style="text-align: center; font-size: 1.2rem; margin-bottom: 6px">
+          Rename Folder
+        </h3>
+        <input
+          type="text"
+          id="renameFolderInput"
+          style="
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            background: rgba(245, 158, 11, 0.06);
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            outline: none;
+            margin-bottom: 18px;
+          "
+          placeholder="New folder name"
+        />
+
+        <div style="display: flex; gap: 10px">
+          <button
+            onclick="
+              document.getElementById('renameFolderModal').style.display =
+                'none'
+            "
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 12px;
+              background: var(--surface2);
+              border: 1px solid var(--border);
+              color: var(--text-muted);
+              cursor: pointer;
+              font-weight: 600;
+            "
+          >
+            Cancel
+          </button>
+          <button
+            onclick="confirmRenameFolder()"
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 12px;
+              background: linear-gradient(135deg, #f59e0b, #d97706);
+              border: none;
+              color: #fff;
+              cursor: pointer;
+              font-weight: 700;
+            "
+          >
+            ✓ Save
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<nav>
-    <a href="index.html" style="text-decoration:none; color:inherit; display:flex; align-items:center;">
-        <h1 style="cursor:pointer">🛒 Cogni<span>Cart</span></h1>
-    </a>
-    <div class="nav-links" id="navLinks">
+    <nav>
+      <a
+        href="index.html"
+        style="
+          text-decoration: none;
+          color: inherit;
+          display: flex;
+          align-items: center;
+        "
+      >
+        <h1 style="cursor: pointer">🛒 Cogni<span>Cart</span></h1>
+      </a>
+      <div class="nav-links" id="navLinks">
         <a href="index.html?section=orders" class="nav-btn">My Orders</a>
         <a href="index.html?section=history" class="nav-btn">History</a>
         <a href="watchlist.html" class="nav-btn active">Watchlist</a>
         <a href="alerts.html" class="nav-btn">Alerts</a>
         <a href="index.html?section=cart" class="nav-btn">Cart</a>
         <a href="#" id="logoutBtn" class="nav-btn nav-btn-logout">Logout</a>
-    </div>
-</nav>
+      </div>
+    </nav>
 
-<div class="page-wrap">
-    <div class="page-header">
+    <div class="page-wrap">
+      <div class="page-header">
         <div class="page-header-text">
-            <h2>📊 Price Watchlist</h2>
-            <p>Track prices across all stores. Get email alerts the moment they drop.</p>
+          <h2>📊 Price Watchlist</h2>
+          <p>
+            Track prices across all stores. Get email alerts the moment they
+            drop.
+          </p>
         </div>
         <div class="last-updated" id="lastUpdated">Refreshes every 10 min</div>
-    </div>
+      </div>
 
-    <div id="loadingState"><div class="spinner"></div><p>Loading your watchlist…</p></div>
-    <div id="statsContainer" class="stats" style="display:none"></div>
-    <div id="folderBar" style="display:none; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:20px;"></div>
-    <div id="folderGrid" class="watchlist-grid"></div>
-    <div id="emptyState" class="empty-state">
+      <div id="loadingState">
+        <div class="spinner"></div>
+        <p>Loading your watchlist…</p>
+      </div>
+      <div id="statsContainer" class="stats" style="display: none"></div>
+      <div
+        id="folderBar"
+        style="
+          display: none;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 20px;
+        "
+      ></div>
+      <div id="folderGrid" class="watchlist-grid"></div>
+      <div id="emptyState" class="empty-state">
         <div class="empty-emoji">👀</div>
         <h3>Nothing on Watch Yet</h3>
-        <p>Search for products and click "Watch Price" to start tracking drops and get email alerts.</p>
+        <p>
+          Search for products and click "Watch Price" to start tracking drops
+          and get email alerts.
+        </p>
         <a href="index.html" class="btn-primary">🔍 Find Products to Watch</a>
+      </div>
     </div>
-</div>
 
-<!-- New Folder Modal -->
-<div id="folderModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
-  <div style="background:var(--surface); border:1px solid rgba(99,102,241,0.3); border-radius:24px; padding:36px 32px; max-width:380px; width:90%; box-shadow:0 32px 80px rgba(0,0,0,0.6); animation:popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);">
-    <div style="font-size:2.5rem; text-align:center; margin-bottom:12px">📁</div>
-    <h3 style="text-align:center; font-size:1.2rem; margin-bottom:6px;">Create New Folder</h3>
-    <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; margin-bottom:22px;">Group your watchlist items by category or project.</p>
-    <input id="folderNameInput" type="text" placeholder="e.g. Birthday Gifts, Home Setup…"
-      style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid rgba(99,102,241,0.4); background:rgba(99,102,241,0.06); color:#f1f5f9; font-size:0.95rem; outline:none; margin-bottom:18px;">
-    <div style="display:flex; gap:10px;">
-      <button onclick="closeFolderModal()" style="flex:1; padding:12px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-weight:600;">Cancel</button>
-      <button onclick="confirmCreateFolder()" style="flex:1; padding:12px; border-radius:12px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff; cursor:pointer; font-weight:700;">✓ Create</button>
+    <!-- New Folder Modal -->
+    <div
+      id="folderModal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div
+        style="
+          background: var(--surface);
+          border: 1px solid rgba(99, 102, 241, 0.3);
+          border-radius: 24px;
+          padding: 36px 32px;
+          max-width: 380px;
+          width: 90%;
+          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+          animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        "
+      >
+        <div style="font-size: 2.5rem; text-align: center; margin-bottom: 12px">
+          📁
+        </div>
+        <h3 style="text-align: center; font-size: 1.2rem; margin-bottom: 6px">
+          Create New Folder
+        </h3>
+        <p
+          style="
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 22px;
+          "
+        >
+          Group your watchlist items by category or project.
+        </p>
+        <input
+          id="folderNameInput"
+          type="text"
+          placeholder="e.g. Birthday Gifts, Home Setup…"
+          style="
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.06);
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            outline: none;
+            margin-bottom: 18px;
+          "
+        />
+        <div style="display: flex; gap: 10px">
+          <button
+            onclick="closeFolderModal()"
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 12px;
+              background: var(--surface2);
+              border: 1px solid var(--border);
+              color: var(--text-muted);
+              cursor: pointer;
+              font-weight: 600;
+            "
+          >
+            Cancel
+          </button>
+          <button
+            onclick="confirmCreateFolder()"
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 12px;
+              background: linear-gradient(135deg, #6366f1, #8b5cf6);
+              border: none;
+              color: #fff;
+              cursor: pointer;
+              font-weight: 700;
+            "
+          >
+            ✓ Create
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<script>
-    const API_BASE = (() => {
+    <script>
+      const API_BASE = (() => {
         const port = location.port;
         if (location.protocol === "file:") return "http://localhost:3000/api";
-        if (port === "5500" || port === "5501") return "http://localhost:3000/api";
+        if (port === "5500" || port === "5501")
+          return "http://localhost:3000/api";
         if (port === "3000") return "http://localhost:3000/api";
         return "/api";
-    })();
+      })();
 
-    function toast(msg, type = "info", duration = 3500) {
+      function toast(msg, type = "info", duration = 3500) {
         const container = document.getElementById("toast-container");
         const div = document.createElement("div");
         div.className = `toast ${type}`;
         div.textContent = msg;
         container.appendChild(div);
-        requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add("show")));
-        setTimeout(() => { div.classList.remove("show"); setTimeout(() => div.remove(), 400); }, duration);
-    }
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => div.classList.add("show")),
+        );
+        setTimeout(() => {
+          div.classList.remove("show");
+          setTimeout(() => div.remove(), 400);
+        }, duration);
+      }
 
-    function showConfirm(onYes) {
+      function showConfirm(onYes) {
         const modal = document.getElementById("confirmModal");
         modal.classList.add("open");
-        document.getElementById("confirmYes").onclick = () => { modal.classList.remove("open"); onYes(); };
-        document.getElementById("confirmNo").onclick  = () => modal.classList.remove("open");
-    }
+        document.getElementById("confirmYes").onclick = () => {
+          modal.classList.remove("open");
+          onYes();
+        };
+        document.getElementById("confirmNo").onclick = () =>
+          modal.classList.remove("open");
+      }
 
-    function fc(n) { return `₹${parseInt(n || 0).toLocaleString("en-IN")}`; }
+      function fc(n) {
+        return `₹${parseInt(n || 0).toLocaleString("en-IN")}`;
+      }
 
-    async function loadWatchlist() {
+      async function loadWatchlist() {
         const user = sessionStorage.getItem("loggedUser");
-        if (!user) { window.location.href = "index.html"; return; }
+        if (!user) {
+          window.location.href = "index.html";
+          return;
+        }
 
         // Profile Pill
         const nav = document.getElementById("navLinks");
         if (!document.getElementById("profilePill")) {
-            const a = document.createElement("a");
-            a.id = "profilePill"; a.href = "profile.html"; a.className = "nav-btn nav-btn-profile";
-            a.innerHTML = `👤 ${user}`;
-            nav.insertBefore(a, nav.firstChild);
+          const a = document.createElement("a");
+          a.id = "profilePill";
+          a.href = "profile.html";
+          a.className = "nav-btn nav-btn-profile";
+          a.innerHTML = `👤 ${user}`;
+          nav.insertBefore(a, nav.firstChild);
         }
 
         document.getElementById("loadingState").style.display = "block";
@@ -315,175 +1122,248 @@
         document.getElementById("emptyState").style.display = "none";
 
         try {
-            const res = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(user)}`);
-            if (!res.ok) throw new Error(`Server ${res.status}`);
-            const watchlist = await res.json();
+          const res = await fetch(
+            `${API_BASE}/watchlist/${encodeURIComponent(user)}`,
+          );
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+          const watchlist = await res.json();
 
-            // Fetch explicit folders from DB
-            const folderRes = await fetch(`${API_BASE}/folders/${encodeURIComponent(user)}`);
-            let userFolders = [];
-            if (folderRes.ok) userFolders = await folderRes.json();
+          // Fetch explicit folders from DB
+          const folderRes = await fetch(
+            `${API_BASE}/folders/${encodeURIComponent(user)}`,
+          );
+          let userFolders = [];
+          if (folderRes.ok) userFolders = await folderRes.json();
 
-            document.getElementById("loadingState").style.display = "none";
-            document.getElementById("lastUpdated").textContent = "Updated " + new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
+          document.getElementById("loadingState").style.display = "none";
+          document.getElementById("lastUpdated").textContent =
+            "Updated " +
+            new Date().toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
 
-            // ── Smart Wishlist Folders
-            const folders = { "My Wishlist": [] }; // Ensure default exists
-            userFolders.forEach(f => { if (!folders[f]) folders[f] = []; }); // Add DB folders
-            
-            let totalValue = 0, totalSavings = 0, withDrops = 0;
+          // ── Smart Wishlist Folders
+          const folders = { "My Wishlist": [] }; // Ensure default exists
+          userFolders.forEach((f) => {
+            if (!folders[f]) folders[f] = [];
+          }); // Add DB folders
 
-            if (Array.isArray(watchlist) && watchlist.length > 0) {
-                // Stats
-                totalSavings = watchlist.reduce((t, i) => t + Math.max(0, (i.previousPrice||i.currentPrice) - i.currentPrice), 0);
-                withDrops    = watchlist.filter(i => i.priceDrops?.length > 0).length;
-                totalValue   = watchlist.reduce((t, i) => t + (i.currentPrice || 0), 0);
-                const lowestItem   = watchlist.reduce((a, b) => (a.currentPrice || 0) < (b.currentPrice || 0) ? a : b);
+          let totalValue = 0,
+            totalSavings = 0,
+            withDrops = 0;
 
-                document.getElementById("statsContainer").style.display = "grid";
-                document.getElementById("statsContainer").innerHTML = `
+          if (Array.isArray(watchlist) && watchlist.length > 0) {
+            // Stats
+            totalSavings = watchlist.reduce(
+              (t, i) =>
+                t +
+                Math.max(
+                  0,
+                  (i.previousPrice || i.currentPrice) - i.currentPrice,
+                ),
+              0,
+            );
+            withDrops = watchlist.filter(
+              (i) => i.priceDrops?.length > 0,
+            ).length;
+            totalValue = watchlist.reduce(
+              (t, i) => t + (i.currentPrice || 0),
+              0,
+            );
+            const lowestItem = watchlist.reduce((a, b) =>
+              (a.currentPrice || 0) < (b.currentPrice || 0) ? a : b,
+            );
+
+            document.getElementById("statsContainer").style.display = "grid";
+            document.getElementById("statsContainer").innerHTML = `
                     <div class="stat-box blue"><div class="stat-emoji">👁️</div><div class="stat-value">${watchlist.length}</div><div class="stat-label">Watching</div></div>
                     <div class="stat-box amber"><div class="stat-emoji">🔔</div><div class="stat-value">${withDrops}</div><div class="stat-label">Price Drops</div></div>
                     <div class="stat-box green"><div class="stat-emoji">💰</div><div class="stat-value">${fc(totalSavings)}</div><div class="stat-label">Total Saved</div></div>
                     <div class="stat-box pink"><div class="stat-emoji">🛍️</div><div class="stat-value">${fc(totalValue)}</div><div class="stat-label">Portfolio Value</div></div>`;
-                
-                watchlist.forEach(item => {
-                    const folder = item.folder || "My Wishlist";
-                    if (!folders[folder]) folders[folder] = [];
-                    folders[folder].push(item);
-                });
-            } else {
-                document.getElementById("emptyState").style.display = "block";
-            }
 
-            window._watchlistFolders = folders;
-            // Keep active folder if it still exists, otherwise default
-            if (!window._activeFolder || !folders[window._activeFolder]) {
-                window._activeFolder = Object.keys(folders)[0];
-            }
-
-            renderFolderBar();
-            renderFolderGrid(window._activeFolder);
-
-        } catch (err) {
-            document.getElementById("loadingState").style.display = "none";
-            toast("Failed to load watchlist: " + err.message, "error", 5000);
+            watchlist.forEach((item) => {
+              const folder = item.folder || "My Wishlist";
+              if (!folders[folder]) folders[folder] = [];
+              folders[folder].push(item);
+            });
+          } else {
             document.getElementById("emptyState").style.display = "block";
-        }
-    }
+          }
 
-    function renderFolderBar() {
+          window._watchlistFolders = folders;
+          // Keep active folder if it still exists, otherwise default
+          if (!window._activeFolder || !folders[window._activeFolder]) {
+            window._activeFolder = Object.keys(folders)[0];
+          }
+
+          renderFolderBar();
+          renderFolderGrid(window._activeFolder);
+        } catch (err) {
+          document.getElementById("loadingState").style.display = "none";
+          toast("Failed to load watchlist: " + err.message, "error", 5000);
+          document.getElementById("emptyState").style.display = "block";
+        }
+      }
+
+      function renderFolderBar() {
         const folders = window._watchlistFolders;
-        const active  = window._activeFolder;
+        const active = window._activeFolder;
         const bar = document.getElementById("folderBar");
-        
+
         // Use the new CSS classes for better styling and visibility
         bar.className = "folder-bar-container";
-        bar.style.display = "flex"; 
-        
+        bar.style.display = "flex";
+
         bar.innerHTML = `
             <div style="padding: 0 12px; font-weight: 700; color: var(--accent); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; border-right: 1px solid var(--border); margin-right: 8px;">Folders</div>
-            ${Object.keys(folders).map(f => `
+            ${Object.keys(folders)
+              .map(
+                (f) => `
                 <div style="display:inline-flex; align-items:center; position:relative; group;">
-                  <button onclick="switchFolder('${f}', this)" class="folder-tab ${f === active ? 'active' : ''}" style="padding-right:${f !== 'My Wishlist' ? '32px' : '20px'}">
+                  <button onclick="switchFolder('${f}', this)" class="folder-tab ${f === active ? "active" : ""}" style="padding-right:${f !== "My Wishlist" ? "32px" : "20px"}">
                       ${f} <span>${folders[f].length}</span>
                   </button>
-                  ${f !== 'My Wishlist' ? `<button onclick="openRenameModal('${f}')" title="Rename" style="position:absolute; right:8px; background:transparent; border:none; color:${f === active ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'}; font-size:0.8rem; cursor:pointer; padding:2px; border-radius:4px;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='${f === active ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'}'">✏️</button>` : ''}
+                  ${f !== "My Wishlist" ? `<button onclick="openRenameModal('${f}')" title="Rename" style="position:absolute; right:8px; background:transparent; border:none; color:${f === active ? "rgba(255,255,255,0.7)" : "var(--text-muted)"}; font-size:0.8rem; cursor:pointer; padding:2px; border-radius:4px;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='${f === active ? "rgba(255,255,255,0.7)" : "var(--text-muted)"}'">✏️</button>` : ""}
                 </div>
-            `).join("")}
+            `,
+              )
+              .join("")}
             <button onclick="openFolderModal()" style="border-radius: 14px; padding: 8px 20px; font-size: 0.88rem; cursor: pointer; font-weight: 600; background: rgba(99,102,241,0.08); border: 1px dashed var(--accent); color: var(--accent); transition: 0.2s; margin-left: auto; white-space: nowrap;">
                 + New Folder
             </button>
         `;
-    }
+      }
 
-    function renderFolderGrid(folderName) {
+      function renderFolderGrid(folderName) {
         const items = (window._watchlistFolders || {})[folderName] || [];
         const grid = document.getElementById("folderGrid");
         if (items.length === 0) {
-            grid.innerHTML = "";
-            document.getElementById("emptyState").style.display = "block";
+          grid.innerHTML = "";
+          document.getElementById("emptyState").style.display = "block";
         } else {
-            document.getElementById("emptyState").style.display = "none";
-            grid.innerHTML = items.map(item => createCard(item)).join("");
-            // attach remove buttons + render charts
-            items.forEach(item => {
-                renderChart(item);
-                document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => showConfirm(() => removeItem(item._id)));
-            });
+          document.getElementById("emptyState").style.display = "none";
+          grid.innerHTML = items.map((item) => createCard(item)).join("");
+          // attach remove buttons + render charts
+          items.forEach((item) => {
+            renderChart(item);
+            document
+              .getElementById(`remove-${item._id}`)
+              ?.addEventListener("click", () =>
+                showConfirm(() => removeItem(item._id)),
+              );
+          });
         }
-    }
+      }
 
-    function switchFolder(name, btn) {
+      function switchFolder(name, btn) {
         window._activeFolder = name;
         renderFolderBar();
         renderFolderGrid(name);
-    }
+      }
 
-    function openFolderModal() {
+      function openFolderModal() {
         const m = document.getElementById("folderModal");
         m.style.display = "flex";
         const inp = document.getElementById("folderNameInput");
         inp.value = "";
         setTimeout(() => inp.focus(), 80);
-        inp.onkeydown = e => { if (e.key === "Enter") confirmCreateFolder(); };
-    }
+        inp.onkeydown = (e) => {
+          if (e.key === "Enter") confirmCreateFolder();
+        };
+      }
 
-    function closeFolderModal() {
+      function closeFolderModal() {
         document.getElementById("folderModal").style.display = "none";
-    }
+      }
 
-    async function confirmCreateFolder() {
+      async function confirmCreateFolder() {
         const name = document.getElementById("folderNameInput").value.trim();
-        if (!name) { toast("Please enter a folder name.", "error"); return; }
+        if (!name) {
+          toast("Please enter a folder name.", "error");
+          return;
+        }
         const folders = window._watchlistFolders || {};
-        if (folders[name]) { toast("A folder with this name already exists!", "error"); return; }
-        
+        if (folders[name]) {
+          toast("A folder with this name already exists!", "error");
+          return;
+        }
+
         const username = sessionStorage.getItem("loggedUser");
         if (!username) return;
 
         try {
-            await fetch(`${API_BASE}/folders`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, folderName: name })
-            });
-            
-            folders[name] = [];
-            window._watchlistFolders = folders;
-            window._activeFolder = name;
-            renderFolderBar();
-            renderFolderGrid(name);
-            closeFolderModal();
-            toast(`📁 Folder "${name}" created! Items added to watchlist will be assignable to it.`, "success");
-        } catch (err) {
-            toast("Failed to save folder", "error");
-        }
-    }
+          await fetch(`${API_BASE}/folders`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, folderName: name }),
+          });
 
-    function createCard(item) {
-        const hasDrop = item.previousPrice && item.currentPrice < item.previousPrice;
-        const pct = hasDrop ? ((item.previousPrice - item.currentPrice) / item.previousPrice * 100).toFixed(1) : null;
-        const recentDrop = item.priceDrops?.length > 0 ? item.priceDrops[item.priceDrops.length - 1] : null;
-        const lowestPrice = item.priceHistory?.length ? Math.min(...item.priceHistory.map(h => h.price)) : item.currentPrice;
+          folders[name] = [];
+          window._watchlistFolders = folders;
+          window._activeFolder = name;
+          renderFolderBar();
+          renderFolderGrid(name);
+          closeFolderModal();
+          toast(
+            `📁 Folder "${name}" created! Items added to watchlist will be assignable to it.`,
+            "success",
+          );
+        } catch (err) {
+          toast("Failed to save folder", "error");
+        }
+      }
+
+      function createCard(item) {
+        const hasDrop =
+          item.previousPrice && item.currentPrice < item.previousPrice;
+        const pct = hasDrop
+          ? (
+              ((item.previousPrice - item.currentPrice) / item.previousPrice) *
+              100
+            ).toFixed(1)
+          : null;
+        const recentDrop =
+          item.priceDrops?.length > 0
+            ? item.priceDrops[item.priceDrops.length - 1]
+            : null;
+        const lowestPrice = item.priceHistory?.length
+          ? Math.min(...item.priceHistory.map((h) => h.price))
+          : item.currentPrice;
         const buyLink = item.product?.link || "#";
 
         const ratingNum = parseFloat(item.product?.rating);
         const hasRating = item.product?.rating && !isNaN(ratingNum);
-        const ratingCountStr = item.product?.ratingCount ? parseInt(item.product.ratingCount).toLocaleString("en-IN") : null;
+        const ratingCountStr = item.product?.ratingCount
+          ? parseInt(item.product.ratingCount).toLocaleString("en-IN")
+          : null;
 
         // Store colour coding
         const storeColors = {
-            amazon:   { bg: 'rgba(255,153,0,0.15)',  border: 'rgba(255,153,0,0.35)',  text: '#ffb733' },
-            flipkart: { bg: 'rgba(40,116,240,0.15)', border: 'rgba(40,116,240,0.35)', text: '#5c9bff' },
+          amazon: {
+            bg: "rgba(255,153,0,0.15)",
+            border: "rgba(255,153,0,0.35)",
+            text: "#ffb733",
+          },
+          flipkart: {
+            bg: "rgba(40,116,240,0.15)",
+            border: "rgba(40,116,240,0.35)",
+            text: "#5c9bff",
+          },
         };
-        const storeLower = (item.product?.store || '').toLowerCase();
-        const sc = storeColors[storeLower] || { bg: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.35)', text: '#a5b4fc' };
+        const storeLower = (item.product?.store || "").toLowerCase();
+        const sc = storeColors[storeLower] || {
+          bg: "rgba(99,102,241,0.15)",
+          border: "rgba(99,102,241,0.35)",
+          text: "#a5b4fc",
+        };
 
         return `
-        <div class="watchlist-card ${hasDrop ? 'has-drop' : ''}" style="
-            background: linear-gradient(145deg, var(--surface), var(--surface2));
-            border: 1px solid ${hasDrop ? 'rgba(16,185,129,0.3)' : 'var(--border)'};
+        <div class="watchlist-card ${hasDrop ? "has-drop" : ""}" style="
+            background: var(--surface);
+            border: 1px solid ${hasDrop ? "rgba(16,185,129,0.3)" : "var(--border)"};
             border-radius: 22px;
             overflow: hidden;
             transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.28s ease;
@@ -492,53 +1372,69 @@
         " onmouseenter="this.style.transform='translateY(-6px)';this.style.boxShadow='0 24px 60px rgba(0,0,0,0.55)'"
            onmouseleave="this.style.transform='';this.style.boxShadow=''">
 
-            ${hasDrop ? `<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#10b981,#34d399);z-index:2;"></div>` : ''}
+            ${hasDrop ? `<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#10b981,#34d399);z-index:2;"></div>` : ""}
 
             <!-- Product Image Section -->
-            <div style="position:relative; overflow:hidden; height:200px; background:linear-gradient(135deg,#0d1424,#111827);">
-                <img src="${item.product?.image || ''}" alt="${item.product?.title || ''}"
+            <div style="position:relative; overflow:hidden; height:200px; background:linear-gradient(135deg,#f0f0f0 0%,#e8e8ec 100%);">
+                <img src="${item.product?.image || ""}" alt="${item.product?.title || ""}"
                      onerror="this.src='https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=400&q=80'"
                      style="width:100%;height:100%;object-fit:contain;transition:transform 0.5s ease;padding:12px;"
                      onmouseenter="this.style.transform='scale(1.07)'"
                      onmouseleave="this.style.transform='scale(1)'">
 
                 <!-- Store badge -->
-                ${item.product?.store ? `
+                ${
+                  item.product?.store
+                    ? `
                 <div style="position:absolute;top:12px;left:12px;background:${sc.bg};border:1px solid ${sc.border};color:${sc.text};font-size:0.7rem;font-weight:700;padding:4px 10px;border-radius:8px;backdrop-filter:blur(8px);letter-spacing:0.3px;">
                     ${item.product.store}
-                </div>` : ''}
+                </div>`
+                    : ""
+                }
 
                 <!-- Price drop badge -->
-                ${hasDrop ? `
+                ${
+                  hasDrop
+                    ? `
                 <div style="position:absolute;top:12px;right:12px;background:linear-gradient(135deg,rgba(16,185,129,0.92),rgba(5,150,105,0.92));color:#fff;font-size:0.72rem;font-weight:800;padding:5px 11px;border-radius:9px;letter-spacing:0.4px;backdrop-filter:blur(6px);">
                     ↓ ${pct}% OFF
-                </div>` : ''}
+                </div>`
+                    : ""
+                }
             </div>
 
             <!-- Card Content -->
             <div style="padding:18px 20px 20px;">
                 <!-- Title -->
-                <div title="${item.product?.title || ''}" style="
+                <div title="${item.product?.title || ""}" style="
                     font-size:0.92rem;font-weight:600;color:var(--text);
                     margin-bottom:12px;line-height:1.5;
                     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
                     min-height:2.7em;
-                ">${item.product?.title || 'Product'}</div>
+                ">${item.product?.title || "Product"}</div>
 
                 <!-- Price drop notification -->
-                ${recentDrop ? `
+                ${
+                  recentDrop
+                    ? `
                 <div style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(5,150,105,0.05));border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:0.81rem;display:flex;align-items:center;gap:8px;">
                     🎉 <span style="color:var(--success);font-weight:600;">Price Dropped!</span> You saved ${fc(recentDrop.dropAmount)} (${recentDrop.dropPercentage}% off)
-                </div>` : ''}
+                </div>`
+                    : ""
+                }
 
                 <!-- Current price + change -->
                 <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
                     <div style="font-size:1.9rem;font-weight:800;color:var(--success);letter-spacing:-1px;line-height:1;">${fc(item.currentPrice)}</div>
-                    ${hasDrop ? `
+                    ${
+                      hasDrop
+                        ? `
                     <div style="display:flex;align-items:center;gap:6px;padding-bottom:3px;">
                         <span style="font-size:0.9rem;color:var(--text-muted);text-decoration:line-through;">${fc(item.previousPrice)}</span>
                         <span style="background:rgba(16,185,129,0.15);color:var(--success);padding:2px 8px;border-radius:6px;font-size:0.73rem;font-weight:700;border:1px solid rgba(16,185,129,0.25);">−${pct}%</span>
-                    </div>` : ''}
+                    </div>`
+                        : ""
+                    }
                 </div>
 
                 <!-- Meta row: low/rating/checks -->
@@ -546,11 +1442,15 @@
                     <div style="font-size:0.76rem;color:var(--text-muted);">
                         📉 Low <strong style="color:var(--success);">${fc(lowestPrice)}</strong>
                     </div>
-                    ${hasRating ? `
+                    ${
+                      hasRating
+                        ? `
                     <div style="font-size:0.76rem;color:var(--text-muted);display:flex;align-items:center;gap:3px;">
                         ⭐ <strong style="color:#facc15;">${ratingNum.toFixed(1)}</strong>
-                        ${ratingCountStr ? `<span style="font-size:0.7rem;color:var(--text-muted);">(${ratingCountStr})</span>` : ''}
-                    </div>` : ''}
+                        ${ratingCountStr ? `<span style="font-size:0.7rem;color:var(--text-muted);">(${ratingCountStr})</span>` : ""}
+                    </div>`
+                        : ""
+                    }
                     <div style="font-size:0.76rem;color:var(--text-muted);">
                         🔄 <strong style="color:var(--text);">${item.priceHistory?.length || 1}</strong> checks
                     </div>
@@ -572,7 +1472,7 @@
                 </div>
 
                 <!-- Action buttons -->
-                <div style="display:grid;grid-template-columns:1fr 1fr${buyLink !== '#' ? ' 1fr' : ''};gap:8px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr${buyLink !== "#" ? " 1fr" : ""};gap:8px;">
                     <button id="remove-${item._id}" style="
                         padding:10px 6px;border-radius:10px;border:1px solid rgba(239,68,68,0.3);
                         background:rgba(239,68,68,0.08);color:#fca5a5;font-size:0.81rem;font-weight:700;
@@ -580,155 +1480,217 @@
                     " onmouseenter="this.style.background='rgba(239,68,68,0.18)'"
                        onmouseleave="this.style.background='rgba(239,68,68,0.08)'">🗑 Remove</button>
 
-                    <button onclick="openMoveModal('${item._id}', '${item.folder || 'My Wishlist'}')" style="
+                    <button onclick="openMoveModal('${item._id}', '${item.folder || "My Wishlist"}')" style="
                         padding:10px 6px;border-radius:10px;border:1px solid rgba(16,185,129,0.25);
                         background:rgba(16,185,129,0.08);color:#6ee7b7;font-size:0.81rem;font-weight:700;
                         cursor:pointer;transition:all 0.2s;
                     " onmouseenter="this.style.background='rgba(16,185,129,0.18)'"
                        onmouseleave="this.style.background='rgba(16,185,129,0.08)'">🔀 Move</button>
 
-                    ${buyLink !== '#' ? `
+                    ${
+                      buyLink !== "#"
+                        ? `
                     <a href="${buyLink}" target="_blank" rel="noopener" style="
                         padding:10px 6px;border-radius:10px;border:none;
                         background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
                         font-size:0.81rem;font-weight:700;text-decoration:none;
                         display:flex;align-items:center;justify-content:center;gap:4px;
                         transition:opacity 0.2s;
-                    " onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">🛒 Buy</a>` : `
-                    <button onclick="searchForProduct('${item.product?.title ? item.product.title.replace(/'/g, "\\'") : ''}')" style="
+                    " onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">🛒 Buy</a>`
+                        : `
+                    <button onclick="searchForProduct('${item.product?.title ? item.product.title.replace(/'/g, "\\'") : ""}')" style="
                         padding:10px 6px;border-radius:10px;border:none;
                         background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
                         font-size:0.81rem;font-weight:700;cursor:pointer;transition:opacity 0.2s;
-                    " onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">🔍 Search</button>`}
+                    " onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">🔍 Search</button>`
+                    }
                 </div>
             </div>
         </div>`;
-    }
+      }
 
-    function renderChart(item) {
+      function renderChart(item) {
         const ctx = document.getElementById(`chart-${item._id}`);
         if (!ctx) return;
 
-        let history = [...(item.priceHistory || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        if (history.length < 2) history.unshift({ ...history[0], timestamp: new Date(new Date((history[0]?.timestamp) || Date.now()).getTime() - 86400000).toISOString() });
+        let history = [...(item.priceHistory || [])].sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
+        );
+        if (history.length < 2)
+          history.unshift({
+            ...history[0],
+            timestamp: new Date(
+              new Date(history[0]?.timestamp || Date.now()).getTime() -
+                86400000,
+            ).toISOString(),
+          });
 
-        const labels = history.map(h => new Date(h.timestamp).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: 'numeric', month: 'short' }));
-        const data   = history.map(h => h.price);
+        const labels = history.map((h) =>
+          new Date(h.timestamp).toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "numeric",
+            month: "short",
+          }),
+        );
+        const data = history.map((h) => h.price);
         const isDown = data[data.length - 1] < data[0];
 
-        const gradFill = ctx.getContext('2d').createLinearGradient(0, 0, 0, 90);
-        gradFill.addColorStop(0, isDown ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)');
-        gradFill.addColorStop(1, 'rgba(0,0,0,0)');
+        const gradFill = ctx.getContext("2d").createLinearGradient(0, 0, 0, 90);
+        gradFill.addColorStop(
+          0,
+          isDown ? "rgba(16,185,129,0.3)" : "rgba(99,102,241,0.3)",
+        );
+        gradFill.addColorStop(1, "rgba(0,0,0,0)");
 
         new Chart(ctx, {
-            type: 'line',
-            data: { labels, datasets: [{ data, borderColor: isDown ? '#10b981' : '#6366f1', backgroundColor: gradFill, borderWidth: 2, pointBackgroundColor: isDown ? '#10b981' : '#6366f1', pointBorderColor: '#fff', pointRadius: 3, fill: true, tension: 0.4 }] },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fc(ctx.raw) } } },
-                scales: {
-                    x: { display: false },
-                    y: { display: false, min: Math.min(...data) * 0.94, max: Math.max(...data) * 1.06 }
-                },
-                interaction: { intersect: false, mode: 'index' }
-            }
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                data,
+                borderColor: isDown ? "#10b981" : "#6366f1",
+                backgroundColor: gradFill,
+                borderWidth: 2,
+                pointBackgroundColor: isDown ? "#10b981" : "#6366f1",
+                pointBorderColor: "#fff",
+                pointRadius: 3,
+                fill: true,
+                tension: 0.4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx) => fc(ctx.raw) } },
+            },
+            scales: {
+              x: { display: false },
+              y: {
+                display: false,
+                min: Math.min(...data) * 0.94,
+                max: Math.max(...data) * 1.06,
+              },
+            },
+            interaction: { intersect: false, mode: "index" },
+          },
         });
-    }
+      }
 
-    async function removeItem(id) {
+      async function removeItem(id) {
         try {
-            const res = await fetch(`${API_BASE}/watchlist/${id}`, { method: "DELETE" });
-            if (!res.ok) throw new Error(`Server ${res.status}`);
-            toast("Removed from watchlist ✓", "success");
-            loadWatchlist();
+          const res = await fetch(`${API_BASE}/watchlist/${id}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+          toast("Removed from watchlist ✓", "success");
+          loadWatchlist();
         } catch (err) {
-            toast("Failed to remove: " + err.message, "error");
+          toast("Failed to remove: " + err.message, "error");
         }
-    }
+      }
 
-    function filterFolder(folderName, btn) {
+      function filterFolder(folderName, btn) {
         switchFolder(folderName, btn);
-    }
+      }
 
-    function searchForProduct(title) {
+      function searchForProduct(title) {
         if (!title) return;
         sessionStorage.setItem("lastSearch", title);
         sessionStorage.setItem("triggerSearch", "true");
         window.location.href = "index.html";
-    }
+      }
 
-    function createFolder() {
+      function createFolder() {
         openFolderModal();
-    }
+      }
 
-    let _itemToMove = null;
-    function openMoveModal(itemId, currentFolder) {
+      let _itemToMove = null;
+      function openMoveModal(itemId, currentFolder) {
         _itemToMove = itemId;
         const folders = Object.keys(window._watchlistFolders || {});
         const dropdown = document.getElementById("moveFolderDropdown");
-        dropdown.innerHTML = folders.map(f => `<option value="${f}" ${f === currentFolder ? 'disabled' : ''}>${f}${f === currentFolder ? ' (Current)' : ''}</option>`).join("");
+        dropdown.innerHTML = folders
+          .map(
+            (f) =>
+              `<option value="${f}" ${f === currentFolder ? "disabled" : ""}>${f}${f === currentFolder ? " (Current)" : ""}</option>`,
+          )
+          .join("");
         document.getElementById("moveModal").style.display = "flex";
-    }
+      }
 
-    async function confirmMoveItem() {
+      async function confirmMoveItem() {
         if (!_itemToMove) return;
         const folder = document.getElementById("moveFolderDropdown").value;
         try {
-            const res = await fetch(`${API_BASE}/watchlist/${_itemToMove}/move`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ folder })
-            });
-            if (!res.ok) throw new Error(`Server ${res.status}`);
-            toast(`Moved to ${folder} ✓`, "success");
-            document.getElementById("moveModal").style.display = "none";
-            loadWatchlist();
+          const res = await fetch(`${API_BASE}/watchlist/${_itemToMove}/move`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folder }),
+          });
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+          toast(`Moved to ${folder} ✓`, "success");
+          document.getElementById("moveModal").style.display = "none";
+          loadWatchlist();
         } catch (err) {
-            toast("Failed to move: " + err.message, "error");
+          toast("Failed to move: " + err.message, "error");
         }
-    }
+      }
 
-    let _folderToRename = null;
-    function openRenameModal(folderName) {
+      let _folderToRename = null;
+      function openRenameModal(folderName) {
         _folderToRename = folderName;
         document.getElementById("renameFolderInput").value = folderName;
         document.getElementById("renameFolderModal").style.display = "flex";
-    }
+      }
 
-    async function confirmRenameFolder() {
-        const newName = document.getElementById("renameFolderInput").value.trim();
+      async function confirmRenameFolder() {
+        const newName = document
+          .getElementById("renameFolderInput")
+          .value.trim();
         if (!newName || newName === _folderToRename) return;
         const folders = window._watchlistFolders || {};
-        if (folders[newName]) { toast("Folder already exists!", "error"); return; }
-        
+        if (folders[newName]) {
+          toast("Folder already exists!", "error");
+          return;
+        }
+
         const username = sessionStorage.getItem("loggedUser");
         if (!username) return;
 
         try {
-            const res = await fetch(`${API_BASE}/folders/rename`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, oldName: _folderToRename, newName })
-            });
-            if (!res.ok) throw new Error("Server error");
-            
-            toast("Folder renamed ✓", "success");
-            document.getElementById("renameFolderModal").style.display = "none";
-            if (window._activeFolder === _folderToRename) window._activeFolder = newName;
-            loadWatchlist();
-        } catch (err) {
-            toast("Failed to rename: " + err.message, "error");
-        }
-    }
+          const res = await fetch(`${API_BASE}/folders/rename`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username,
+              oldName: _folderToRename,
+              newName,
+            }),
+          });
+          if (!res.ok) throw new Error("Server error");
 
-    document.getElementById("logoutBtn").addEventListener("click", e => {
+          toast("Folder renamed ✓", "success");
+          document.getElementById("renameFolderModal").style.display = "none";
+          if (window._activeFolder === _folderToRename)
+            window._activeFolder = newName;
+          loadWatchlist();
+        } catch (err) {
+          toast("Failed to rename: " + err.message, "error");
+        }
+      }
+
+      document.getElementById("logoutBtn").addEventListener("click", (e) => {
         e.preventDefault();
         sessionStorage.removeItem("loggedUser");
         window.location.href = "index.html";
-    });
+      });
 
-    loadWatchlist();
-    setInterval(loadWatchlist, 10 * 60 * 1000);
-</script>
-</body>
+      loadWatchlist();
+      setInterval(loadWatchlist, 10 * 60 * 1000);
+    </script>
+  </body>
 </html>
