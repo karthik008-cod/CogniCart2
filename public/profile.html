@@ -1,168 +1,726 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Profile - CogniCart</title>
     <link rel="icon" type="image/png" href="assets/logo.png" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #080e1c; --surface: #111827; --surface2: #1a2235;
-            --border: rgba(255,255,255,0.07); --accent: #6366f1; --accent2: #8b5cf6;
-            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
-            --text: #f1f5f9; --text-muted: #64748b;
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --bg: #080e1c;
+        --surface: #111827;
+        --surface2: #1a2235;
+        --border: rgba(255, 255, 255, 0.07);
+        --accent: #6366f1;
+        --accent2: #8b5cf6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --text: #f1f5f9;
+        --text-muted: #64748b;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding-bottom: 60px;
+      }
+
+      nav {
+        background: rgba(8, 14, 28, 0.85);
+        backdrop-filter: blur(16px);
+        padding: 1rem 2.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      nav h2 {
+        font-size: 1.3rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #a78bfa, #f472b6);
+        -webkit-background-clip: text;
+        color: transparent;
+        cursor: pointer;
+      }
+      .nav-links {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .nav-links a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 500;
+        padding: 7px 14px;
+        border-radius: 8px;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      .nav-links a:hover {
+        background: var(--surface2);
+        color: var(--text);
+      }
+      .nav-pill {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 20px !important;
+        color: var(--text) !important;
+      }
+
+      .container {
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 36px 24px;
+      }
+
+      /* Hero banner */
+      .profile-hero {
+        background: linear-gradient(
+          135deg,
+          #1e1b4b 0%,
+          #1e293b 50%,
+          #0f172a 100%
+        );
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 36px 40px;
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        position: relative;
+        overflow: hidden;
+      }
+      .profile-hero::before {
+        content: "";
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 250px;
+        height: 250px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(99, 102, 241, 0.2) 0%,
+          transparent 70%
+        );
+      }
+      .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: 800;
+        color: #fff;
+        flex-shrink: 0;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.3);
+      }
+      .hero-info h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+      }
+      .hero-info p {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .email-edit-btn {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        padding: 5px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      .email-edit-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+      }
+      .hero-badges {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .badge-blue {
+        background: rgba(99, 102, 241, 0.15);
+        color: #a5b4fc;
+        border: 1px solid rgba(99, 102, 241, 0.25);
+      }
+      .badge-green {
+        background: rgba(16, 185, 129, 0.15);
+        color: #6ee7b7;
+        border: 1px solid rgba(16, 185, 129, 0.25);
+      }
+      .badge-amber {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fde68a;
+        border: 1px solid rgba(245, 158, 11, 0.25);
+      }
+      .member-since {
+        margin-left: auto;
+        text-align: right;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+      .member-since strong {
+        display: block;
+        font-size: 1rem;
+        color: var(--text);
+      }
+
+      /* Stats */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 24px 20px;
+        position: relative;
+        overflow: hidden;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        cursor: default;
+      }
+      .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      }
+      .stat-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+      }
+      .sc-blue::after {
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      }
+      .sc-green::after {
+        background: linear-gradient(90deg, #10b981, #34d399);
+      }
+      .sc-amber::after {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      }
+      .sc-pink::after {
+        background: linear-gradient(90deg, #ec4899, #f472b6);
+      }
+      .sc-cyan::after {
+        background: linear-gradient(90deg, #06b6d4, #22d3ee);
+      }
+      .stat-icon {
+        font-size: 1.8rem;
+        margin-bottom: 12px;
+      }
+      .stat-val {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 4px;
+      }
+      .stat-lbl {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+      }
+      .stat-sub {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-top: 6px;
+      }
+
+      /* Layout */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      .grid-2-eq {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      @media (max-width: 900px) {
+        .grid-2,
+        .grid-2-eq {
+          grid-template-columns: 1fr;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+      }
 
-        nav { background: rgba(8,14,28,0.85); backdrop-filter: blur(16px); padding: 1rem 2.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        nav h2 { font-size: 1.3rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #f472b6); -webkit-background-clip: text; color: transparent; cursor: pointer; }
-        .nav-links { display: flex; gap: 6px; align-items: center; }
-        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; transition: background 0.2s, color 0.2s; }
-        .nav-links a:hover { background: var(--surface2); color: var(--text); }
-        .nav-pill { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 20px !important; color: var(--text) !important; }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 28px;
+      }
+      .panel-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+      }
 
-        .container { max-width: 1300px; margin: 0 auto; padding: 36px 24px; }
+      .chart-box {
+        position: relative;
+        height: 280px;
+      }
 
-        /* Hero banner */
+      /* History list */
+      .history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 380px;
+        overflow-y: auto;
+        padding-right: 6px;
+      }
+      .history-list::-webkit-scrollbar {
+        width: 4px;
+      }
+      .history-list::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 10px;
+      }
+      .history-item {
+        background: var(--surface2);
+        padding: 13px 16px;
+        border-radius: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+        cursor: pointer;
+      }
+      .history-item:hover {
+        background: rgba(99, 102, 241, 0.1);
+      }
+      .history-q {
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .history-t {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      /* Watchlist items in profile */
+      .wl-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px;
+        background: var(--surface2);
+        border-radius: 12px;
+        margin-bottom: 10px;
+        transition: background 0.2s;
+      }
+      .wl-item:hover {
+        background: rgba(99, 102, 241, 0.08);
+      }
+      .wl-img {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: var(--border);
+      }
+      .wl-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .wl-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wl-price {
+        font-size: 0.9rem;
+        color: var(--success);
+        font-weight: 700;
+      }
+      .wl-drop {
+        font-size: 0.72rem;
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--success);
+        padding: 2px 7px;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+
+      /* Top searches */
+      .top-q {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .top-q:last-child {
+        border-bottom: none;
+      }
+      .top-q-rank {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        width: 20px;
+      }
+      .top-q-bar-wrap {
+        flex: 1;
+      }
+      .top-q-name {
+        font-size: 0.87rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .top-q-bar {
+        height: 4px;
+        background: var(--surface2);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .top-q-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .top-q-count {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      .not-logged-in {
+        text-align: center;
+        padding: 120px 20px;
+      }
+      .not-logged-in a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      @media (max-width: 640px) {
+        nav {
+          flex-direction: column;
+          gap: 10px;
+          padding: 1rem;
+        }
+        .container {
+          padding: 20px 14px;
+        }
         .profile-hero {
-            background: linear-gradient(135deg, #1e1b4b 0%, #1e293b 50%, #0f172a 100%);
-            border: 1px solid var(--border); border-radius: 24px; padding: 36px 40px;
-            margin-bottom: 32px; display: flex; align-items: center; gap: 28px;
-            position: relative; overflow: hidden;
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 24px 20px;
         }
-        .profile-hero::before {
-            content: ''; position: absolute; top: -60px; right: -60px;
-            width: 250px; height: 250px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%);
+        .member-since {
+          margin-left: 0;
+          text-align: left;
         }
-        .avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; color: #fff; flex-shrink: 0; box-shadow: 0 0 0 4px rgba(99,102,241,0.3); }
-        .hero-info h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
-        .hero-info p  { color: var(--text-muted); font-size: 0.9rem; }
-        .hero-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
-        .badge-blue   { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
-        .badge-green  { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
-        .badge-amber  { background: rgba(245,158,11,0.15); color: #fde68a; border: 1px solid rgba(245,158,11,0.25); }
-        .member-since { margin-left: auto; text-align: right; font-size: 0.8rem; color: var(--text-muted); }
-        .member-since strong { display: block; font-size: 1rem; color: var(--text); }
+      }
 
-        /* Stats */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
-        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 24px 20px; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
-        .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-        .sc-blue::after   { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
-        .sc-green::after  { background: linear-gradient(90deg, #10b981, #34d399); }
-        .sc-amber::after  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-        .sc-pink::after   { background: linear-gradient(90deg, #ec4899, #f472b6); }
-        .sc-cyan::after   { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
-        .stat-icon { font-size: 1.8rem; margin-bottom: 12px; }
-        .stat-val  { font-size: 2rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 4px; }
-        .stat-lbl  { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; }
-        .stat-sub  { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
+      /* Navigation buttons */
+      .nav-btn {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 7px 16px;
+        color: var(--text-muted);
+        font-size: 0.84rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          color 0.2s,
+          border-color 0.2s;
+        white-space: nowrap;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        border-color: rgba(255, 255, 255, 0.18);
+      }
+      .nav-btn.active {
+        background: var(--accent);
+        border-color: transparent;
+        color: #fff;
+        font-weight: 700;
+      }
+      .nav-btn-profile {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: var(--text) !important;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .nav-btn-profile:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+      }
+      .nav-btn-logout {
+        color: rgba(239, 68, 68, 0.75) !important;
+        border-color: rgba(239, 68, 68, 0.18) !important;
+      }
+      .nav-btn-logout:hover {
+        background: rgba(239, 68, 68, 0.08) !important;
+        color: #ef4444 !important;
+        border-color: rgba(239, 68, 68, 0.35) !important;
+      }
 
-        /* Layout */
-        .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
-        .grid-2-eq { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-        @media (max-width: 900px) { .grid-2, .grid-2-eq { grid-template-columns: 1fr; } }
-
-        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; }
-        .panel-title { font-size: 1rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-
-        .chart-box { position: relative; height: 280px; }
-
-        /* History list */
-        .history-list { display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 6px; }
-        .history-list::-webkit-scrollbar { width: 4px; }
-        .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-        .history-item { background: var(--surface2); padding: 13px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; cursor: pointer; }
-        .history-item:hover { background: rgba(99,102,241,0.1); }
-        .history-q { font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
-        .history-t { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
-
-        /* Watchlist items in profile */
-        .wl-item { display: flex; align-items: center; gap: 14px; padding: 12px; background: var(--surface2); border-radius: 12px; margin-bottom: 10px; transition: background 0.2s; }
-        .wl-item:hover { background: rgba(99,102,241,0.08); }
-        .wl-img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--border); }
-        .wl-info { flex: 1; min-width: 0; }
-        .wl-title { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .wl-price { font-size: 0.9rem; color: var(--success); font-weight: 700; }
-        .wl-drop  { font-size: 0.72rem; background: rgba(16,185,129,0.15); color: var(--success); padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
-
-        /* Top searches */
-        .top-q { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-        .top-q:last-child { border-bottom: none; }
-        .top-q-rank { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); width: 20px; }
-        .top-q-bar-wrap { flex: 1; }
-        .top-q-name { font-size: 0.87rem; font-weight: 600; margin-bottom: 4px; }
-        .top-q-bar { height: 4px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
-        .top-q-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
-        .top-q-count { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
-
-        .not-logged-in { text-align: center; padding: 120px 20px; }
-        .not-logged-in a { color: var(--accent); text-decoration: none; font-weight: 600; }
-
-        @media (max-width: 640px) { nav { flex-direction: column; gap: 10px; padding: 1rem; } .container { padding: 20px 14px; } .profile-hero { flex-direction: column; align-items: flex-start; padding: 24px 20px; } .member-since { margin-left: 0; text-align: left; } }
+      /* Name Edit Modal */
+      #editNameModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+      }
+      #editNameModal.open {
+        display: flex;
+      }
+      .edit-name-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 36px 32px;
+        max-width: 360px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      @keyframes popIn {
+        from {
+          transform: scale(0.85);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .edit-name-box h3 {
+        font-size: 1.15rem;
+        margin-bottom: 8px;
+      }
+      .edit-name-box p {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+        line-height: 1.6;
+      }
+      .edit-name-input {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+        font-size: 0.95rem;
+        outline: none;
+        margin-bottom: 20px;
+        transition: border-color 0.2s;
+      }
+      .edit-name-input:focus {
+        border-color: var(--accent);
+      }
+      .edit-actions {
+        display: flex;
+        gap: 12px;
+      }
+      .edit-actions button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition:
+          opacity 0.2s,
+          transform 0.15s;
+      }
+      .edit-actions button:hover {
+        opacity: 0.85;
+        transform: scale(0.97);
+      }
+      .btn-cancel {
+        background: var(--surface2);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+      }
+      .btn-save {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+      }
     </style>
-</head>
-<body>
-<nav>
-    <a href="index.html" style="text-decoration:none; color:inherit; display:flex; align-items:center;">
-        <h2 style="cursor:pointer">🛒 CogniCart</h2>
-    </a>
-    <div class="nav-links" id="navLinks">
-        <a href="watchlist.html">📊 Watchlist</a>
-        <a href="#" id="logoutBtn">Logout</a>
-    </div>
-</nav>
+  </head>
+  <body>
+    <nav>
+      <a
+        href="index.html"
+        style="
+          text-decoration: none;
+          color: inherit;
+          display: flex;
+          align-items: center;
+        "
+      >
+        <h2 style="cursor: pointer">🛒 CogniCart</h2>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="index.html?section=orders" class="nav-btn">My Orders</a>
+        <a href="index.html?section=history" class="nav-btn">History</a>
+        <a href="watchlist.html" class="nav-btn">Watchlist</a>
+        <a href="alerts.html" class="nav-btn">Alerts</a>
+        <a href="index.html?section=cart" class="nav-btn">Cart</a>
+        <a
+          href="profile.html"
+          class="nav-btn nav-btn-profile"
+          id="profileNavLink"
+          style="display: none"
+        ></a>
+        <a href="#" id="logoutBtn" class="nav-btn nav-btn-logout">Logout</a>
+      </div>
+    </nav>
 
-<div class="container" id="mainContainer">
-    <div class="not-logged-in">
+    <div class="container" id="mainContainer">
+      <div class="not-logged-in">
         <h2>You are not logged in.</h2>
         <p>Please <a href="index.html">Login</a> to view your profile.</p>
+      </div>
     </div>
-</div>
 
-<script>
-    const API_BASE = (() => {
+    <!-- Edit Name Modal -->
+    <div id="editNameModal">
+      <div class="edit-name-box">
+        <h3>Edit Display Name</h3>
+        <p>Update your profile name</p>
+        <input
+          type="text"
+          id="editNameInput"
+          class="edit-name-input"
+          placeholder="Enter your display name"
+        />
+        <div class="edit-actions">
+          <button class="btn-cancel" onclick="closeEditNameModal()">
+            Cancel
+          </button>
+          <button class="btn-save" onclick="saveEditName()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = (() => {
         const port = location.port;
         if (location.protocol === "file:") return "http://localhost:3000/api";
-        if (port === "5500" || port === "5501") return "http://localhost:3000/api";
+        if (port === "5500" || port === "5501")
+          return "http://localhost:3000/api";
         if (port === "3000") return "http://localhost:3000/api";
         return "/api";
-    })();
+      })();
 
-    let userHistory = [], watchlistData = [], cartData = [], ordersData = [];
-    let totalSearchesCount = 0;
+      let userHistory = [],
+        watchlistData = [],
+        cartData = [],
+        ordersData = [];
+      let totalSearchesCount = 0;
 
-    window.onload = async () => {
+      window.onload = async () => {
         const user = sessionStorage.getItem("loggedUser");
         if (!user) return;
 
-        // Profile pill in nav
-        const nav = document.getElementById("navLinks");
-        const pill = document.createElement("a");
-        pill.href = "profile.html"; pill.className = "nav-pill";
-        pill.innerHTML = `👤 ${user}`;
-        nav.insertBefore(pill, document.getElementById("logoutBtn"));
+        // Update profile link in nav
+        const profileLink = document.getElementById("profileNavLink");
+        const defaultName = user.split("@")[0];
+        const storedName = sessionStorage.getItem("displayName");
+        const displayName = storedName || defaultName;
+        profileLink.textContent = `👤 ${displayName}`;
+        profileLink.style.display = "inline-flex";
 
         document.getElementById("logoutBtn").addEventListener("click", () => {
-            sessionStorage.removeItem("loggedUser");
-            window.location.href = "index.html";
+          sessionStorage.removeItem("loggedUser");
+          window.location.href = "index.html";
         });
 
-        const initial = user.split('@')[0].charAt(0).toUpperCase();
-        const firstName = user.split('@')[0];
+        const initial = user.split("@")[0].charAt(0).toUpperCase();
 
         document.getElementById("mainContainer").innerHTML = `
         <div class="profile-hero">
             <div class="avatar">${initial}</div>
             <div class="hero-info">
-                <h1>Hey, ${firstName}! 👋</h1>
-                <p>${user}</p>
+                <h1 id="profileName">Hey, ${displayName}!</h1>
+                <p id="profileEmail">${user}
+                    <button class="email-edit-btn" type="button" onclick="editProfileName()">✏️ Edit name</button>
+                </p>
                 <div class="hero-badges">
                     <span class="badge badge-blue" id="searcherBadge">🔍 Loading…</span>
                     <span class="badge badge-green" id="saverBadge">💰 Loading…</span>
@@ -207,171 +765,315 @@
 
         // Live clock
         setInterval(() => {
-            const el = document.getElementById("nowTime");
-            if (el) el.textContent = new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
+          const el = document.getElementById("nowTime");
+          if (el)
+            el.textContent = new Date().toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
         }, 1000);
 
-        await Promise.all([fetchHistory(user), fetchWatchlist(user), fetchOrders(user)]);
+        await Promise.all([
+          fetchHistory(user),
+          fetchWatchlist(user),
+          fetchOrders(user),
+        ]);
         renderDashboard();
-    };
+      };
 
-    const fc = n => `₹${parseInt(n || 0).toLocaleString("en-IN")}`;
+      function editProfileName() {
+        const header = document.getElementById("profileName");
+        const currentName = header
+          ? header.textContent.replace(/^Hey,\s*/, "").replace(/!$/, "")
+          : sessionStorage.getItem("loggedUser").split("@")[0];
+        document.getElementById("editNameInput").value = currentName;
+        document.getElementById("editNameModal").classList.add("open");
+        setTimeout(() => document.getElementById("editNameInput").focus(), 100);
+      }
+      function closeEditNameModal() {
+        document.getElementById("editNameModal").classList.remove("open");
+      }
+      function saveEditName() {
+        const newName = document.getElementById("editNameInput").value.trim();
+        if (!newName) {
+          document.getElementById("editNameInput").style.borderColor =
+            "#ef4444";
+          setTimeout(() => {
+            document.getElementById("editNameInput").style.borderColor = "";
+          }, 1000);
+          return;
+        }
+        sessionStorage.setItem("displayName", newName);
+        const header = document.getElementById("profileName");
+        if (header) header.textContent = `Hey, ${newName}!`;
+        const profileLink = document.getElementById("profileNavLink");
+        if (profileLink) profileLink.textContent = `👤 ${newName}`;
+        closeEditNameModal();
+      }
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("editNameInput")
+          .addEventListener("keypress", (e) => {
+            if (e.key === "Enter") saveEditName();
+          });
+        document
+          .getElementById("editNameModal")
+          .addEventListener("click", (e) => {
+            if (e.target === document.getElementById("editNameModal"))
+              closeEditNameModal();
+          });
+      });
 
-    async function fetchHistory(u) {
-        try { 
-            const r = await fetch(`${API_BASE}/history/${encodeURIComponent(u)}`); 
-            if (r.ok) {
-                const data = await r.json();
-                userHistory = data.history || [];
-                totalSearchesCount = data.totalSearches || userHistory.length;
-            }
+      const fc = (n) => `₹${parseInt(n || 0).toLocaleString("en-IN")}`;
+
+      async function fetchHistory(u) {
+        try {
+          const r = await fetch(`${API_BASE}/history/${encodeURIComponent(u)}`);
+          if (r.ok) {
+            const data = await r.json();
+            userHistory = data.history || [];
+            totalSearchesCount = data.totalSearches || userHistory.length;
+          }
         } catch {}
-    }
-    async function fetchWatchlist(u) {
-        try { const r = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(u)}`); if (r.ok) watchlistData = await r.json(); } catch {}
-    }
-    async function fetchOrders(u) {
-        try { const r = await fetch(`${API_BASE}/orders/${encodeURIComponent(u)}`); if (r.ok) ordersData = await r.json(); } catch {}
-    }
+      }
+      async function fetchWatchlist(u) {
+        try {
+          const r = await fetch(
+            `${API_BASE}/watchlist/${encodeURIComponent(u)}`,
+          );
+          if (r.ok) watchlistData = await r.json();
+        } catch {}
+      }
+      async function fetchOrders(u) {
+        try {
+          const r = await fetch(`${API_BASE}/orders/${encodeURIComponent(u)}`);
+          if (r.ok) ordersData = await r.json();
+        } catch {}
+      }
 
-    function renderDashboard() {
+      function renderDashboard() {
         // Stats
-        const savings = watchlistData.reduce((t, i) => t + Math.max(0, (i.previousPrice || i.currentPrice) - i.currentPrice), 0);
-        const totalValue = watchlistData.reduce((t, i) => t + (i.currentPrice || 0), 0);
-        const drops = watchlistData.filter(i => i.priceDrops?.length > 0).length;
+        const savings = watchlistData.reduce(
+          (t, i) =>
+            t +
+            Math.max(0, (i.previousPrice || i.currentPrice) - i.currentPrice),
+          0,
+        );
+        const totalValue = watchlistData.reduce(
+          (t, i) => t + (i.currentPrice || 0),
+          0,
+        );
+        const drops = watchlistData.filter(
+          (i) => i.priceDrops?.length > 0,
+        ).length;
 
         document.getElementById("sSearches").textContent = totalSearchesCount;
-        document.getElementById("sSearchesSub").textContent = userHistory.length ? `Last: "${userHistory[userHistory.length - 1].searchQuery.substring(0, 20)}"` : "No searches yet";
+        document.getElementById("sSearchesSub").textContent = userHistory.length
+          ? `Last: "${userHistory[userHistory.length - 1].searchQuery.substring(0, 20)}"`
+          : "No searches yet";
         document.getElementById("sWatching").textContent = watchlistData.length;
-        document.getElementById("sWatchingSub").textContent = `${drops} price drop${drops !== 1 ? 's' : ''} detected`;
+        document.getElementById("sWatchingSub").textContent =
+          `${drops} price drop${drops !== 1 ? "s" : ""} detected`;
         document.getElementById("sSavings").textContent = fc(savings);
         document.getElementById("sValue").textContent = fc(totalValue);
         document.getElementById("sOrders").textContent = ordersData.length;
-        document.getElementById("sOrdersSub").textContent = ordersData.length ? `Latest: ${ordersData[ordersData.length - 1].orderDate?.split(',')[0] || '—'}` : "No orders yet";
+        document.getElementById("sOrdersSub").textContent = ordersData.length
+          ? `Latest: ${ordersData[ordersData.length - 1].orderDate?.split(",")[0] || "—"}`
+          : "No orders yet";
 
         // Badges
-        document.getElementById("searcherBadge").textContent = `🔍 ${totalSearchesCount} Searches`;
-        document.getElementById("saverBadge").textContent = savings > 0 ? `💰 Saved ${fc(savings)}` : "💰 No Savings Yet";
-        document.getElementById("watcherBadge").textContent = `👁️ ${watchlistData.length} Watching`;
+        document.getElementById("searcherBadge").textContent =
+          `🔍 ${totalSearchesCount} Searches`;
+        document.getElementById("saverBadge").textContent =
+          savings > 0 ? `💰 Saved ${fc(savings)}` : "💰 No Savings Yet";
+        document.getElementById("watcherBadge").textContent =
+          `👁️ ${watchlistData.length} Watching`;
 
         // History list
         const listEl = document.getElementById("historyList");
         if (!userHistory.length) {
-            listEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">No searches yet. Start comparing prices!</p>`;
+          listEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">No searches yet. Start comparing prices!</p>`;
         } else {
-            listEl.innerHTML = [...userHistory].reverse().slice(0, 20).map(h => {
-                let t = "";
-                try {
-                    const d = new Date(h.time);
-                    t = isNaN(d.getTime()) ? h.time.split(',')[0] : d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
-                } catch { t = h.time?.split(',')[0] || ""; }
-                return `<div class="history-item" onclick="window.location.href='index.html?q=${encodeURIComponent(h.searchQuery)}'">
+          listEl.innerHTML = [...userHistory]
+            .reverse()
+            .slice(0, 20)
+            .map((h) => {
+              let t = "";
+              try {
+                const d = new Date(h.time);
+                t = isNaN(d.getTime())
+                  ? h.time.split(",")[0]
+                  : d.toLocaleDateString("en-IN", {
+                      timeZone: "Asia/Kolkata",
+                      day: "numeric",
+                      month: "short",
+                    });
+              } catch {
+                t = h.time?.split(",")[0] || "";
+              }
+              return `<div class="history-item" onclick="window.location.href='index.html?q=${encodeURIComponent(h.searchQuery)}'">
                     <div class="history-q"><span>🔍</span>${h.searchQuery}</div>
                     <div class="history-t">${t}</div>
                 </div>`;
-            }).join("");
+            })
+            .join("");
         }
 
         // Top searched terms
         const freq = {};
-        userHistory.forEach(h => { const k = h.searchQuery.toLowerCase().trim(); freq[k] = (freq[k] || 0) + 1; });
-        const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        userHistory.forEach((h) => {
+          const k = h.searchQuery.toLowerCase().trim();
+          freq[k] = (freq[k] || 0) + 1;
+        });
+        const sorted = Object.entries(freq)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6);
         const maxCount = sorted[0]?.[1] || 1;
         const topEl = document.getElementById("topSearches");
         if (!sorted.length) {
-            topEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">Search for products to see your top terms.</p>`;
+          topEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">Search for products to see your top terms.</p>`;
         } else {
-            topEl.innerHTML = sorted.map(([q, c], i) => `
+          topEl.innerHTML = sorted
+            .map(
+              ([q, c], i) => `
                 <div class="top-q">
                     <div class="top-q-rank">#${i + 1}</div>
                     <div class="top-q-bar-wrap">
                         <div class="top-q-name">${q.charAt(0).toUpperCase() + q.slice(1)}</div>
-                        <div class="top-q-bar"><div class="top-q-bar-fill" style="width:${(c / maxCount * 100).toFixed(0)}%"></div></div>
+                        <div class="top-q-bar"><div class="top-q-bar-fill" style="width:${((c / maxCount) * 100).toFixed(0)}%"></div></div>
                     </div>
                     <div class="top-q-count">${c}×</div>
-                </div>`).join("");
+                </div>`,
+            )
+            .join("");
         }
 
         // Watchlist highlights
         const wlEl = document.getElementById("wlHighlights");
         if (!watchlistData.length) {
-            wlEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">No products on watchlist yet.</p>`;
+          wlEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem">No products on watchlist yet.</p>`;
         } else {
-            const sorted = [...watchlistData].sort((a, b) => {
-                const aDrop = a.previousPrice ? (a.previousPrice - a.currentPrice) / a.previousPrice : 0;
-                const bDrop = b.previousPrice ? (b.previousPrice - b.currentPrice) / b.previousPrice : 0;
-                return bDrop - aDrop;
-            });
-            wlEl.innerHTML = sorted.map(item => {
-                const hasDrop = item.previousPrice && item.currentPrice < item.previousPrice;
-                const pct = hasDrop ? ((item.previousPrice - item.currentPrice) / item.previousPrice * 100).toFixed(1) : null;
-                return `<div class="wl-item">
-                    <img class="wl-img" src="${item.product?.image || ''}" onerror="this.style.display='none'" alt="">
+          const sorted = [...watchlistData].sort((a, b) => {
+            const aDrop = a.previousPrice
+              ? (a.previousPrice - a.currentPrice) / a.previousPrice
+              : 0;
+            const bDrop = b.previousPrice
+              ? (b.previousPrice - b.currentPrice) / b.previousPrice
+              : 0;
+            return bDrop - aDrop;
+          });
+          wlEl.innerHTML = sorted
+            .map((item) => {
+              const hasDrop =
+                item.previousPrice && item.currentPrice < item.previousPrice;
+              const pct = hasDrop
+                ? (
+                    ((item.previousPrice - item.currentPrice) /
+                      item.previousPrice) *
+                    100
+                  ).toFixed(1)
+                : null;
+              return `<div class="wl-item">
+                    <img class="wl-img" src="${item.product?.image || ""}" onerror="this.style.display='none'" alt="">
                     <div class="wl-info">
-                        <div class="wl-title" title="${item.product?.title}">${item.product?.title || 'Product'}</div>
+                        <div class="wl-title" title="${item.product?.title}">${item.product?.title || "Product"}</div>
                         <div class="wl-price">${fc(item.currentPrice)}</div>
                     </div>
-                    ${hasDrop ? `<div class="wl-drop">↓ ${pct}%</div>` : ''}
+                    ${hasDrop ? `<div class="wl-drop">↓ ${pct}%</div>` : ""}
                 </div>`;
-            }).join("");
+            })
+            .join("");
         }
 
         // Activity chart
         const counts = {};
         for (let i = 6; i >= 0; i--) {
-            const d = new Date(); d.setDate(d.getDate() - i);
-            counts[d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })] = 0;
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          counts[
+            d.toLocaleDateString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              day: "numeric",
+              month: "short",
+            })
+          ] = 0;
         }
-        userHistory.forEach(h => {
-            try {
-                let d;
-                if (h.timestamp) {
-                    d = new Date(h.timestamp);
-                } else if (h.time) {
-                    const datePart = h.time.split(',')[0];
-                    if (datePart.includes('/')) {
-                        const parts = datePart.split('/');
-                        d = new Date(parts[2], parts[1] - 1, parts[0]);
-                    } else {
-                        d = new Date(h.time);
-                    }
-                }
-                const k = (d && !isNaN(d.getTime())) ? d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }) : null;
-                if (k && counts[k] !== undefined) counts[k]++;
-            } catch {}
+        userHistory.forEach((h) => {
+          try {
+            let d;
+            if (h.timestamp) {
+              d = new Date(h.timestamp);
+            } else if (h.time) {
+              const datePart = h.time.split(",")[0];
+              if (datePart.includes("/")) {
+                const parts = datePart.split("/");
+                d = new Date(parts[2], parts[1] - 1, parts[0]);
+              } else {
+                d = new Date(h.time);
+              }
+            }
+            const k =
+              d && !isNaN(d.getTime())
+                ? d.toLocaleDateString("en-IN", {
+                    timeZone: "Asia/Kolkata",
+                    day: "numeric",
+                    month: "short",
+                  })
+                : null;
+            if (k && counts[k] !== undefined) counts[k]++;
+          } catch {}
         });
 
         const ctx = document.getElementById("activityChart");
         if (ctx) {
-            const vals = Object.values(counts);
-            const maxVal = Math.max(...vals, 1);
-            const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 280);
-            grad.addColorStop(0, "rgba(99,102,241,0.5)");
-            grad.addColorStop(1, "rgba(99,102,241,0.0)");
-            new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: Object.keys(counts),
-                    datasets: [{
-                        label: "Searches", data: vals,
-                        backgroundColor: vals.map(v => v === maxVal ? "rgba(139,92,246,0.9)" : "rgba(99,102,241,0.6)"),
-                        borderRadius: 8, borderSkipped: false
-                    }]
+          const vals = Object.values(counts);
+          const maxVal = Math.max(...vals, 1);
+          const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 280);
+          grad.addColorStop(0, "rgba(99,102,241,0.5)");
+          grad.addColorStop(1, "rgba(99,102,241,0.0)");
+          new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: Object.keys(counts),
+              datasets: [
+                {
+                  label: "Searches",
+                  data: vals,
+                  backgroundColor: vals.map((v) =>
+                    v === maxVal
+                      ? "rgba(139,92,246,0.9)"
+                      : "rgba(99,102,241,0.6)",
+                  ),
+                  borderRadius: 8,
+                  borderSkipped: false,
                 },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: c => `${c.raw} search${c.raw !== 1 ? 'es' : ''}` } }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#64748b", stepSize: 1 } },
-                        x: { grid: { display: false }, ticks: { color: "#64748b" } }
-                    }
-                }
-            });
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (c) => `${c.raw} search${c.raw !== 1 ? "es" : ""}`,
+                  },
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  grid: { color: "rgba(255,255,255,0.04)" },
+                  ticks: { color: "#64748b", stepSize: 1 },
+                },
+                x: { grid: { display: false }, ticks: { color: "#64748b" } },
+              },
+            },
+          });
         }
-    }
-</script>
-</body>
+      }
+    </script>
+  </body>
 </html>
